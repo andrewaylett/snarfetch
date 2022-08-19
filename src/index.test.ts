@@ -15,6 +15,26 @@
  *
  */
 
-it('dummy tese', async () => {
-    expect(true).toBeTruthy();
+import { jest, expect, describe, it } from '@jest/globals';
+
+import { Snarfetch } from './index';
+
+import type nodeFetch from 'node-fetch';
+import type { Response } from 'node-fetch';
+
+describe('Basic passthrough', () => {
+    describe('On a clean context', () => {
+        it('Passes through its parameters', async () => {
+            const url: string = Symbol() as unknown as string;
+            const mockFetch = jest.fn<typeof nodeFetch>();
+            const mockRv = Promise.resolve(Symbol() as unknown as Response);
+            mockFetch.mockReturnValue(mockRv);
+            const context = new Snarfetch(mockFetch);
+
+            const rv = context.fetch(url);
+
+            await expect(rv).resolves.toBe(await mockRv);
+            expect(mockFetch).toBeCalledWith(url, undefined);
+        });
+    });
 });

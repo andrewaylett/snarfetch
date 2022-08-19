@@ -15,4 +15,24 @@
  *
  */
 
-export default {};
+import type { RequestInfo, RequestInit } from 'node-fetch';
+import nodeFetch from 'node-fetch';
+import { lookupGlobalInstance } from './global';
+
+export class Snarfetch {
+    readonly #fetch: typeof nodeFetch;
+
+    constructor(fetch: typeof nodeFetch = nodeFetch) {
+        this.#fetch = fetch;
+    }
+
+    fetch(url: RequestInfo, init?: RequestInit) {
+        return this.#fetch(url, init);
+    }
+}
+
+const fetch: typeof nodeFetch = (url: RequestInfo, init?: RequestInit) => {
+    return lookupGlobalInstance().fetch(url, init);
+};
+
+export default fetch;
