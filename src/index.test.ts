@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 import { jest, expect, describe, it } from '@jest/globals';
@@ -25,11 +24,11 @@ import type { Response } from 'node-fetch';
 describe('Basic passthrough', () => {
     describe('On a clean context', () => {
         it('Passes through its parameters', async () => {
-            const url: string = Symbol() as unknown as string;
+            const url = 'https://example.com/';
             const mockFetch = jest.fn<typeof nodeFetch>();
             const mockRv = Promise.resolve(Symbol() as unknown as Response);
             mockFetch.mockReturnValue(mockRv);
-            const context = new Snarfetch(mockFetch);
+            const context = new Snarfetch({ fetch: mockFetch });
 
             const rv = context.fetch(url);
 

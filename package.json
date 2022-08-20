@@ -1,5 +1,6 @@
 {
   "name": "snarfetch",
+  "description": "A helpful fetch wrapper for NodeJS",
   "author": "Andrew Aylett",
   "version": "0.0.0",
   "license": "Apache-2.0",
@@ -46,6 +47,7 @@
     "typescript": "4.7.4"
   },
   "dependencies": {
-    "node-fetch": "3.2.10"
+    "node-fetch": "3.2.10",
+    "self-throttle": "^0.3.1"
   }
 }
