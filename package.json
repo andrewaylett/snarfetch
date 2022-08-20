@@ -2,7 +2,7 @@
   "name": "snarfetch",
   "description": "A helpful fetch wrapper for NodeJS",
   "author": "Andrew Aylett",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
