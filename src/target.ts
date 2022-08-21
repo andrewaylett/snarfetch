@@ -18,11 +18,11 @@ import { SelfThrottle } from 'self-throttle';
 import { Fetch, SnarfetchOptions } from './options';
 import { RequestInfo, RequestInit, Response } from 'node-fetch';
 
-type CacheKey = string;
+type Location = string;
 
-class CacheEntry {}
+class LocationCacheStatus {}
 
-class UnknownCacheStatus implements CacheEntry {
+class UnknownCacheStatus implements LocationCacheStatus {
     readonly unblock: Promise<unknown>;
 
     constructor(unblock: Promise<unknown>) {
@@ -30,16 +30,43 @@ class UnknownCacheStatus implements CacheEntry {
     }
 }
 
-class NoCache implements CacheEntry {}
+class NoCache implements LocationCacheStatus {}
 
-class IndeterminateCache implements CacheEntry {}
+class IndeterminateCache implements LocationCacheStatus {
+    readonly #response: Promise<Response>;
+    readonly #blob: Promise<Blob>;
+    valid: boolean;
 
-class Fail implements CacheEntry {}
+    constructor(response: Promise<Response>) {
+        this.#blob = response.then((response) => response.blob());
+        this.#response = response;
+        this.valid = true;
+        setImmediate(() => {
+            this.valid = false;
+        });
+    }
+
+    get response(): Promise<Response> {
+        return this.#buildResponse();
+    }
+
+    async #buildResponse(): Promise<Response> {
+        const blob = await this.#blob;
+        const response = await this.#response;
+        return new Response(blob, {
+            headers: response.headers.entries(),
+            status: response.status,
+            statusText: response.statusText,
+        });
+    }
+}
+
+class Fail implements LocationCacheStatus {}
 
 export class Target {
     readonly #throttle: SelfThrottle;
     readonly #fetch: Fetch;
-    readonly #known: Partial<Record<CacheKey, CacheEntry>> = {};
+    readonly #known: Partial<Record<Location, LocationCacheStatus>> = {};
 
     constructor(options: Required<SnarfetchOptions>) {
         this.#throttle = new options.throttle();
@@ -48,7 +75,7 @@ export class Target {
 
     async fetch(url: RequestInfo, init?: RequestInit): Promise<Response> {
         const { pathname, search } = extractTargetURL(url);
-        const cacheKey: CacheKey = `${pathname}${search}`;
+        const cacheKey: Location = `${pathname}${search}`;
         {
             // Do we need to wait?
             const cacheStatus = this.#known[cacheKey];
@@ -57,7 +84,13 @@ export class Target {
             }
         }
         // If we waited, this should now be a known status
-        const cacheStatus = this.#known[cacheKey];
+        let cacheStatus = this.#known[cacheKey];
+        if (cacheStatus instanceof IndeterminateCache) {
+            if (cacheStatus.valid) {
+                return cacheStatus.response;
+            }
+            cacheStatus = undefined;
+        }
         const promise = this.#fetch(url, init);
         const response = this.#postFetch(promise, cacheKey);
         if (!cacheStatus) {
@@ -68,12 +101,13 @@ export class Target {
 
     async #postFetch(
         promise: Promise<Response>,
-        cacheKey: CacheKey,
+        cacheKey: Location,
     ): Promise<Response> {
         const result: Response = await promise;
 
         if (result.status >= 500) {
             this.#known[cacheKey] = new Fail();
+            return result;
         } else {
             const cacheHeader = result.headers.get('cache-control') ?? '';
             const noCache = !cacheHeader
@@ -82,12 +116,13 @@ export class Target {
                 .every((value) => value !== 'no-cache');
             if (noCache) {
                 this.#known[cacheKey] = new NoCache();
+                return result;
             } else {
-                this.#known[cacheKey] = new IndeterminateCache();
+                const cache = new IndeterminateCache(Promise.resolve(result));
+                this.#known[cacheKey] = cache;
+                return cache.response;
             }
         }
-
-        return result;
     }
 }
 
