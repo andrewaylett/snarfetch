@@ -50,19 +50,26 @@ export class Target {
         const { pathname, search } = extractTargetURL(url);
         const cacheKey: CacheKey = `${pathname}${search}`;
         {
+            // Do we need to wait?
             const cacheStatus = this.#known[cacheKey];
             if (cacheStatus && cacheStatus instanceof UnknownCacheStatus) {
                 await cacheStatus.unblock;
             }
         }
+        // If we waited, this should now be a known status
         const cacheStatus = this.#known[cacheKey];
-        let promise;
+        const promise = this.#fetch(url, init);
+        const response = this.#postFetch(promise, cacheKey);
         if (!cacheStatus) {
-            promise = this.#fetch(url, init);
-            this.#known[cacheKey] = new UnknownCacheStatus(promise);
-        } else {
-            promise = this.#fetch(url, init);
+            this.#known[cacheKey] = new UnknownCacheStatus(response);
         }
+        return response;
+    }
+
+    async #postFetch(
+        promise: Promise<Response>,
+        cacheKey: CacheKey,
+    ): Promise<Response> {
         const result: Response = await promise;
 
         if (result.status >= 500) {
