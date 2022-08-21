@@ -27,4 +27,4 @@ export type SnarfetchOptions = {
 export const SNARFETCH_DEFAULTS: Required<SnarfetchOptions> = {
     fetch: nodeFetch,
     throttle: SelfThrottle,
-};
+} as const;

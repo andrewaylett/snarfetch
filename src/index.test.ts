@@ -19,14 +19,15 @@ import { jest, expect, describe, it } from '@jest/globals';
 import { Snarfetch } from './index';
 
 import type nodeFetch from 'node-fetch';
-import type { Response } from 'node-fetch';
+import { Response } from 'node-fetch';
+import { Fetch } from './options';
 
 describe('Basic passthrough', () => {
     describe('On a clean context', () => {
         it('Passes through its parameters', async () => {
             const url = 'https://example.com/';
             const mockFetch = jest.fn<typeof nodeFetch>();
-            const mockRv = Promise.resolve(Symbol() as unknown as Response);
+            const mockRv = Promise.resolve(new Response(Symbol().toString()));
             mockFetch.mockReturnValue(mockRv);
             const context = new Snarfetch({ fetch: mockFetch });
 
@@ -35,5 +36,98 @@ describe('Basic passthrough', () => {
             await expect(rv).resolves.toBe(await mockRv);
             expect(mockFetch).toBeCalledWith(url, undefined);
         });
+    });
+});
+
+const unlockable = <T>(result: T): [Promise<T>, () => void] => {
+    let resolver: (result: T) => void;
+    const promise = new Promise<T>((resolve) => {
+        resolver = resolve;
+    });
+    return [
+        promise,
+        async () => {
+            return new Promise((resolve) => {
+                resolver(result);
+                setImmediate(resolve);
+            });
+        },
+    ];
+};
+
+describe('Deduplicated Requests', () => {
+    it("A first request blocks a second that's the same", async () => {
+        // If we don't yet know whether a request is cacheable, delay a subsequent
+        // request until the first returns -- either we'll issue it, or we'll
+        // re-use the first response.
+        const url = 'https://example.com/one';
+        const unlocker = jest.fn<() => Promise<number>>();
+        let returnId = 0;
+        const fetch: Fetch = (async () => {
+            const lockValue = await unlocker();
+            const id = ++returnId;
+            const rv = [lockValue, id] as const;
+            return new Response(rv);
+        }) as unknown as Fetch;
+
+        const [first, unlockFirst] = unlockable(1);
+        const [second, unlockSecond] = unlockable(2);
+        unlocker.mockReturnValueOnce(first);
+        unlocker.mockReturnValueOnce(second);
+
+        const context = new Snarfetch({ fetch });
+
+        // Issue two requests
+        const firstPromise = context.fetch(url);
+        const secondPromise = context.fetch(url);
+
+        // Allow the second to proceed before allowing the first
+        await unlockSecond();
+        await unlockFirst();
+
+        // The second should have been blocked until the first completed
+        const one = expect((await firstPromise).text()).resolves.toMatch('1,1');
+        const two = expect((await secondPromise).text()).resolves.toMatch(
+            '2,2',
+        );
+        await Promise.all([one, two]);
+    });
+
+    it('A first request does not blocks a different request', async () => {
+        // If we don't yet know whether a request is cacheable, delay a subsequent
+        // request until the first returns -- either we'll issue it, or we'll
+        // re-use the first response.
+        const url1 = 'https://example.com/one';
+        const url2 = 'https://example.com/two';
+        const unlocker = jest.fn<() => Promise<number>>();
+        let returnId = 0;
+        const fetch: Fetch = (async () => {
+            const lockValue = await unlocker();
+            const id = ++returnId;
+            const rv = [lockValue, id] as const;
+            return new Response(rv);
+        }) as unknown as Fetch;
+
+        const [first, unlockFirst] = unlockable(1);
+        const [second, unlockSecond] = unlockable(2);
+        unlocker.mockReturnValueOnce(first);
+        unlocker.mockReturnValueOnce(second);
+
+        const context = new Snarfetch({ fetch });
+
+        // Issue two requests
+        const firstPromise = context.fetch(url1);
+        const secondPromise = context.fetch(url2);
+
+        // Allow the second to proceed before allowing the first
+        await unlockSecond();
+        await unlockFirst();
+
+        // The second should have been blocked until the first completed
+        const one = expect((await firstPromise).text()).resolves.toMatch('1,2');
+        const two = expect((await secondPromise).text()).resolves.toMatch(
+            '2,1',
+        );
+        await Promise.all([one, two]);
     });
 });

@@ -17,12 +17,14 @@
     "src"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "npm run buildonly",
+    "buildonly": "tsc",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
     "lint": "eslint src --ext .ts",
     "prebuild": "npm run test",
     "pretest": "npm run lint",
     "lint:fix": "npm run lint -- --fix",
+    "dev": "npm run lint:fix && npm run buildonly && npm run test",
     "prepublishOnly": "npm run build"
   },
   "prettier": {

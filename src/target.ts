@@ -18,17 +18,69 @@ import { SelfThrottle } from 'self-throttle';
 import { Fetch, SnarfetchOptions } from './options';
 import { RequestInfo, RequestInit, Response } from 'node-fetch';
 
+type CacheKey = string;
+
+class CacheEntry {}
+
+class UnknownCacheStatus implements CacheEntry {
+    readonly unblock: Promise<unknown>;
+
+    constructor(unblock: Promise<unknown>) {
+        this.unblock = unblock;
+    }
+}
+
+class NoCache implements CacheEntry {}
+
+class IndeterminateCache implements CacheEntry {}
+
+class Fail implements CacheEntry {}
+
 export class Target {
     readonly #throttle: SelfThrottle;
     readonly #fetch: Fetch;
+    readonly #known: Partial<Record<CacheKey, CacheEntry>> = {};
 
     constructor(options: Required<SnarfetchOptions>) {
         this.#throttle = new options.throttle();
         this.#fetch = this.#throttle.wrap(options.fetch);
     }
 
-    fetch(url: RequestInfo, init?: RequestInit): Promise<Response> {
-        return this.#fetch(url, init);
+    async fetch(url: RequestInfo, init?: RequestInit): Promise<Response> {
+        const { pathname, search } = extractTargetURL(url);
+        const cacheKey: CacheKey = `${pathname}${search}`;
+        {
+            const cacheStatus = this.#known[cacheKey];
+            if (cacheStatus && cacheStatus instanceof UnknownCacheStatus) {
+                await cacheStatus.unblock;
+            }
+        }
+        const cacheStatus = this.#known[cacheKey];
+        let promise;
+        if (!cacheStatus) {
+            promise = this.#fetch(url, init);
+            this.#known[cacheKey] = new UnknownCacheStatus(promise);
+        } else {
+            promise = this.#fetch(url, init);
+        }
+        const result: Response = await promise;
+
+        if (result.status >= 500) {
+            this.#known[cacheKey] = new Fail();
+        } else {
+            const cacheHeader = result.headers.get('cache-control') ?? '';
+            const noCache = !cacheHeader
+                .split(';')
+                .map((value) => value.trim())
+                .every((value) => value !== 'no-cache');
+            if (noCache) {
+                this.#known[cacheKey] = new NoCache();
+            } else {
+                this.#known[cacheKey] = new IndeterminateCache();
+            }
+        }
+
+        return result;
     }
 }
 
