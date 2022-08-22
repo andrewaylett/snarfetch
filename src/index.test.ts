@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-import { jest, expect, describe, it } from '@jest/globals';
+import { jest, describe, it } from '@jest/globals';
+import { expect } from '../test/expect';
 
 import { Snarfetch } from './index';
 
@@ -22,13 +23,27 @@ import type nodeFetch from 'node-fetch';
 import { Response } from 'node-fetch';
 import { Fetch } from './options';
 
+const nextTick = () =>
+    new Promise<void>((resolve) => {
+        const then = Date.now();
+        const wait = () => {
+            if (Date.now() > then) {
+                resolve();
+            } else {
+                setImmediate(wait);
+            }
+        };
+        wait();
+    });
+
 describe('Basic passthrough', () => {
     describe('On a clean context', () => {
         it('Passes through its parameters', async () => {
             const url = 'https://example.com/';
             const mockFetch = jest.fn<typeof nodeFetch>();
+            const body = Symbol().toString();
             const mockRv = Promise.resolve(
-                new Response(Symbol().toString(), {
+                new Response(body, {
                     headers: { 'cache-control': 'no-cache' },
                 }),
             );
@@ -37,7 +52,7 @@ describe('Basic passthrough', () => {
 
             const rv = context.fetch(url);
 
-            await expect(rv).resolves.toBe(await mockRv);
+            await expect(rv).resolves.toSuccessfullyReturn(body);
             expect(mockFetch).toBeCalledWith(url, undefined);
         });
     });
@@ -71,7 +86,7 @@ describe('No Cache', () => {
             const lockValue = await unlocker();
             const id = ++returnId;
             const rv = [lockValue, id] as const;
-            return new Response(rv, {
+            return new Response(JSON.stringify(rv), {
                 headers: { 'cache-control': 'no-cache' },
             });
         }) as unknown as Fetch;
@@ -92,10 +107,8 @@ describe('No Cache', () => {
         await unlockFirst();
 
         // The second should have been blocked until the first completed
-        const one = expect((await firstPromise).text()).resolves.toMatch('1,1');
-        const two = expect((await secondPromise).text()).resolves.toMatch(
-            '2,2',
-        );
+        const one = expect(firstPromise).resolves.toSuccessfullyReturn([1, 1]);
+        const two = expect(secondPromise).resolves.toSuccessfullyReturn([2, 2]);
         await Promise.all([one, two]);
     });
 
@@ -111,7 +124,7 @@ describe('No Cache', () => {
             const lockValue = await unlocker();
             const id = ++returnId;
             const rv = [lockValue, id] as const;
-            return new Response(rv);
+            return new Response(JSON.stringify(rv));
         }) as unknown as Fetch;
 
         const [first, unlockFirst] = unlockable(1);
@@ -130,10 +143,8 @@ describe('No Cache', () => {
         await unlockFirst();
 
         // The second should have been blocked until the first completed
-        const one = expect((await firstPromise).text()).resolves.toMatch('1,2');
-        const two = expect((await secondPromise).text()).resolves.toMatch(
-            '2,1',
-        );
+        const one = expect(firstPromise).resolves.toSuccessfullyReturn([1, 2]);
+        const two = expect(secondPromise).resolves.toSuccessfullyReturn([2, 1]);
         await Promise.all([one, two]);
     });
 });
@@ -157,8 +168,8 @@ describe('Indeterminate cache', () => {
         const secondPromise = context.fetch(url);
 
         // The second should have the same result as the first
-        const one = expect((await firstPromise).text()).resolves.toMatch('1');
-        const two = expect((await secondPromise).text()).resolves.toMatch('1');
+        const one = expect(firstPromise).resolves.toSuccessfullyReturn('1');
+        const two = expect(secondPromise).resolves.toSuccessfullyReturn('1');
         await Promise.all([one, two]);
     });
 
@@ -177,13 +188,12 @@ describe('Indeterminate cache', () => {
 
         // Issue two requests
         const firstPromise = context.fetch(url);
-        const one = expect((await firstPromise).text()).resolves.toMatch('1');
+        await expect(firstPromise).resolves.toSuccessfullyReturn('1');
 
-        await new Promise((resolve) => setImmediate(resolve));
+        await nextTick();
 
         const secondPromise = context.fetch(url);
-        const two = expect((await secondPromise).text()).resolves.toMatch('2');
-        await Promise.all([one, two]);
+        await expect(secondPromise).resolves.toSuccessfullyReturn('2');
     });
 
     it('first request not no-cache, second request is no-cache', async () => {
@@ -209,14 +219,13 @@ describe('Indeterminate cache', () => {
 
         // Issue two requests
         const firstPromise = context.fetch(url);
-        const one = expect((await firstPromise).text()).resolves.toMatch('1');
+        await expect(firstPromise).resolves.toSuccessfullyReturn('1');
 
-        await new Promise((resolve) => setImmediate(resolve));
+        await nextTick();
 
         const secondPromise = context.fetch(url);
         const thirdPromise = context.fetch(url);
-        const two = expect((await secondPromise).text()).resolves.toMatch('2');
-        const three = expect((await thirdPromise).text()).resolves.toMatch('3');
-        await Promise.all([one, two, three]);
+        await expect(secondPromise).resolves.toSuccessfullyReturn('2');
+        await expect(thirdPromise).resolves.toSuccessfullyReturn('3');
     });
 });

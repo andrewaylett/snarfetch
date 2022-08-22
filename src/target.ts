@@ -17,6 +17,8 @@
 import { SelfThrottle } from 'self-throttle';
 import { Fetch, SnarfetchOptions } from './options';
 import { RequestInfo, RequestInit, Response } from 'node-fetch';
+import { CacheRules, extractCacheRules } from './cacheRules';
+import { Instant, Now } from './temporal';
 
 type Location = string;
 
@@ -30,20 +32,17 @@ class UnknownCacheStatus implements LocationCacheStatus {
     }
 }
 
-class NoCache implements LocationCacheStatus {}
+class NoStore implements LocationCacheStatus {}
 
-class IndeterminateCache implements LocationCacheStatus {
+class Cached implements LocationCacheStatus {
     readonly #response: Promise<Response>;
     readonly #blob: Promise<Blob>;
-    valid: boolean;
+    readonly #cacheRules: CacheRules;
 
-    constructor(response: Promise<Response>) {
+    constructor(response: Promise<Response>, cacheRules: CacheRules) {
         this.#blob = response.then((response) => response.blob());
         this.#response = response;
-        this.valid = true;
-        setImmediate(() => {
-            this.valid = false;
-        });
+        this.#cacheRules = cacheRules;
     }
 
     get response(): Promise<Response> {
@@ -58,6 +57,14 @@ class IndeterminateCache implements LocationCacheStatus {
             status: response.status,
             statusText: response.statusText,
         });
+    }
+
+    get valid(): boolean {
+        return this.validAt(Now.instant());
+    }
+
+    validAt(instant: Instant) {
+        return this.#cacheRules.validAt(instant);
     }
 }
 
@@ -75,6 +82,7 @@ export class Target {
 
     async fetch(url: RequestInfo, init?: RequestInit): Promise<Response> {
         const { pathname, search } = extractTargetURL(url);
+        const requestStart = Now.instant();
         const cacheKey: Location = `${pathname}${search}`;
         {
             // Do we need to wait?
@@ -85,14 +93,20 @@ export class Target {
         }
         // If we waited, this should now be a known status
         let cacheStatus = this.#known[cacheKey];
-        if (cacheStatus instanceof IndeterminateCache) {
-            if (cacheStatus.valid) {
-                return cacheStatus.response;
+        if (cacheStatus instanceof Cached) {
+            if (cacheStatus.validAt(requestStart)) {
+                const response = await cacheStatus.response;
+                const duration = requestStart.since(Now.instant());
+                response.headers.set(
+                    'snarfetch-status',
+                    `HIT in ${duration.milliseconds} ms`,
+                );
+                return response;
             }
             cacheStatus = undefined;
         }
         const promise = this.#fetch(url, init);
-        const response = this.#postFetch(promise, cacheKey);
+        const response = this.#postFetch(promise, cacheKey, requestStart);
         if (!cacheStatus) {
             this.#known[cacheKey] = new UnknownCacheStatus(response);
         }
@@ -102,23 +116,29 @@ export class Target {
     async #postFetch(
         promise: Promise<Response>,
         cacheKey: Location,
+        requestStart: Instant,
     ): Promise<Response> {
         const result: Response = await promise;
+        const duration = requestStart.since(Now.instant());
 
         if (result.status >= 500) {
             this.#known[cacheKey] = new Fail();
             return result;
         } else {
-            const cacheHeader = result.headers.get('cache-control') ?? '';
-            const noCache = !cacheHeader
-                .split(';')
-                .map((value) => value.trim())
-                .every((value) => value !== 'no-cache');
-            if (noCache) {
-                this.#known[cacheKey] = new NoCache();
+            const cacheRules = extractCacheRules(result);
+            if (cacheRules.params.noStore) {
+                result.headers.set(
+                    'snarfetch-status',
+                    `NOSTORE in ${duration.milliseconds} ms`,
+                );
+                this.#known[cacheKey] = new NoStore();
                 return result;
             } else {
-                const cache = new IndeterminateCache(Promise.resolve(result));
+                result.headers.set(
+                    'snarfetch-status',
+                    `MISS in ${duration.milliseconds} ms`,
+                );
+                const cache = new Cached(Promise.resolve(result), cacheRules);
                 this.#known[cacheKey] = cache;
                 return cache.response;
             }
