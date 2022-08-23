@@ -15,14 +15,19 @@
  */
 
 import { SelfThrottle } from 'self-throttle';
-import { Fetch, SnarfetchOptions } from './options';
+import { Bytes, Fetch, SnarfetchOptions } from './options';
 import { RequestInfo, RequestInit, Response } from 'node-fetch';
 import { CacheRules, extractCacheRules } from './cacheRules';
 import { Instant, Now } from './temporal';
+import { GcMap } from './gcmap';
 
 type Location = string;
 
-class LocationCacheStatus {}
+abstract class LocationCacheStatus {
+    abstract get lastUsed(): Instant;
+    abstract get size(): Promise<number>;
+    abstract get valid(): boolean;
+}
 
 class UnknownCacheStatus implements LocationCacheStatus {
     readonly unblock: Promise<unknown>;
@@ -30,19 +35,45 @@ class UnknownCacheStatus implements LocationCacheStatus {
     constructor(unblock: Promise<unknown>) {
         this.unblock = unblock;
     }
+
+    get lastUsed(): Instant {
+        return Now.instant();
+    }
+
+    get size(): Promise<number> {
+        return Promise.resolve(0);
+    }
+
+    get valid(): boolean {
+        return true;
+    }
 }
 
-class NoStore implements LocationCacheStatus {}
+class NoStore implements LocationCacheStatus {
+    get lastUsed(): Instant {
+        return Now.instant();
+    }
+
+    get size(): Promise<number> {
+        return Promise.resolve(0);
+    }
+
+    get valid(): boolean {
+        return true;
+    }
+}
 
 class Cached implements LocationCacheStatus {
     readonly #response: Promise<Response>;
     readonly #blob: Promise<Blob>;
     readonly #cacheRules: CacheRules;
+    #lastUsed: Instant;
 
     constructor(response: Promise<Response>, cacheRules: CacheRules) {
         this.#blob = response.then((response) => response.blob());
         this.#response = response;
         this.#cacheRules = cacheRules;
+        this.#lastUsed = Now.instant();
     }
 
     get response(): Promise<Response> {
@@ -52,11 +83,25 @@ class Cached implements LocationCacheStatus {
     async #buildResponse(): Promise<Response> {
         const blob = await this.#blob;
         const response = await this.#response;
+        this.#lastUsed = Now.instant();
         return new Response(blob, {
             headers: response.headers.entries(),
             status: response.status,
             statusText: response.statusText,
         });
+    }
+
+    get lastUsed(): Instant {
+        return this.#lastUsed;
+    }
+
+    get size(): Promise<number> {
+        return this.#buildSize();
+    }
+
+    async #buildSize(): Promise<number> {
+        const blob = await this.#blob;
+        return blob.size;
     }
 
     get valid(): boolean {
@@ -68,16 +113,31 @@ class Cached implements LocationCacheStatus {
     }
 }
 
-class Fail implements LocationCacheStatus {}
+class Fail implements LocationCacheStatus {
+    get lastUsed(): Instant {
+        return Now.instant();
+    }
+
+    get size(): Promise<number> {
+        return Promise.resolve(0);
+    }
+
+    get valid(): boolean {
+        return false;
+    }
+}
 
 export class Target {
     readonly #throttle: SelfThrottle;
     readonly #fetch: Fetch;
-    readonly #known: Partial<Record<Location, LocationCacheStatus>> = {};
+    readonly #known: GcMap<Location, LocationCacheStatus> = new GcMap();
+    #weightLimit: Bytes;
+    #pendingGcResolves: Array<(n: number) => void> = [];
 
     constructor(options: Required<SnarfetchOptions>) {
         this.#throttle = new options.throttle();
         this.#fetch = this.#throttle.wrap(options.fetch);
+        this.#weightLimit = options.maximumStoragePerTargetBytes;
     }
 
     async fetch(url: RequestInfo, init?: RequestInit): Promise<Response> {
@@ -86,13 +146,13 @@ export class Target {
         const cacheKey: Location = `${pathname}${search}`;
         {
             // Do we need to wait?
-            const cacheStatus = this.#known[cacheKey];
+            const cacheStatus = this.#known.get(cacheKey);
             if (cacheStatus && cacheStatus instanceof UnknownCacheStatus) {
                 await cacheStatus.unblock;
             }
         }
         // If we waited, this should now be a known status
-        let cacheStatus = this.#known[cacheKey];
+        let cacheStatus = this.#known.get(cacheKey);
         if (cacheStatus instanceof Cached) {
             if (cacheStatus.validAt(requestStart)) {
                 const response = await cacheStatus.response;
@@ -108,7 +168,7 @@ export class Target {
         const promise = this.#fetch(url, init);
         const response = this.#postFetch(promise, cacheKey, requestStart);
         if (!cacheStatus) {
-            this.#known[cacheKey] = new UnknownCacheStatus(response);
+            this.#known.set(cacheKey, new UnknownCacheStatus(response));
         }
         return response;
     }
@@ -122,7 +182,7 @@ export class Target {
         const duration = requestStart.since(Now.instant());
 
         if (result.status >= 500) {
-            this.#known[cacheKey] = new Fail();
+            this.#known.set(cacheKey, new Fail());
             return result;
         } else {
             const cacheRules = extractCacheRules(result);
@@ -131,7 +191,7 @@ export class Target {
                     'snarfetch-status',
                     `NOSTORE in ${duration.milliseconds} ms`,
                 );
-                this.#known[cacheKey] = new NoStore();
+                this.#known.set(cacheKey, new NoStore());
                 return result;
             } else {
                 result.headers.set(
@@ -139,10 +199,44 @@ export class Target {
                     `MISS in ${duration.milliseconds} ms`,
                 );
                 const cache = new Cached(Promise.resolve(result), cacheRules);
-                this.#known[cacheKey] = cache;
+                this.#known.set(cacheKey, cache);
+                setImmediate(() => this.#scheduleGC());
                 return cache.response;
             }
         }
+    }
+
+    async gc(limit: number): Promise<number> {
+        this.#weightLimit = Bytes.from({ bytes: limit });
+        return this.#scheduleGC();
+    }
+
+    async #scheduleGC(): Promise<number> {
+        const limit = this.#weightLimit.bytes;
+        const weight = await this.#known.weight((v) => v.size);
+        if (weight <= limit) {
+            return weight;
+        }
+        return new Promise((resolve) => {
+            this.#pendingGcResolves.push(resolve);
+            if (this.#pendingGcResolves.length == 1) {
+                setImmediate(async () => {
+                    const weight = await this.#known.gc(
+                        limit,
+                        (v) => v.lastUsed,
+                        (v) =>
+                            v.valid
+                                ? v.size
+                                : Promise.resolve(Number.POSITIVE_INFINITY),
+                        Instant.compare,
+                    );
+                    let resolver;
+                    while ((resolver = this.#pendingGcResolves.pop())) {
+                        resolver(weight);
+                    }
+                });
+            }
+        });
     }
 }
 
