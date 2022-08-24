@@ -2,7 +2,7 @@
   // see https://www.typescriptlang.org/tsconfig to better understand tsconfigs
   "include": ["src", "types", "test"],
   "exclude": ["**/*.test.ts"],
-  "extends":"@tsconfig/node16/tsconfig.json",
+  "extends": "@tsconfig/node16/tsconfig.json",
   "compilerOptions": {
     "module": "ESNext",
     "target": "ES2022",

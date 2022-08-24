@@ -115,13 +115,13 @@ interface ExtendedMatchers<R extends void | Promise<void>> extends Matchers<R> {
 
 type ExtendedPromiseMatchers = {
     /**
-     * Unwraps the reason of a rejected promise so any other matcher can be chained.
-     * If the promise is fulfilled the assertion fails.
+     * Unwraps the reason of a rejected promise so any other matcher can be
+     * chained. If the promise is fulfilled the assertion fails.
      */
     rejects: ExtendedMatchers<Promise<void>>;
     /**
-     * Unwraps the value of a fulfilled promise so any other matcher can be chained.
-     * If the promise is rejected the assertion fails.
+     * Unwraps the value of a fulfilled promise so any other matcher can be
+     * chained. If the promise is rejected the assertion fails.
      */
     resolves: ExtendedMatchers<Promise<void>>;
 };
