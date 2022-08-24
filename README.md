@@ -25,19 +25,19 @@ await context.fetch('https://localhost');
 
 ## Roadmap
 
-* [x] Wraps node-fetch.
-* [x] Throttles requests to servers that are struggling.
-* [x] Will avoid making requests in parallel when they may be deduplicated.
-* [x] Won't re-use a response that's expired.
-* [ ] Will expire items from the cache.
-* [ ] Will limit the size of object that will be cached.
-* [ ] Will pay attention to `vary`.
-* [ ] Will revalidate requests rather than retrying them.
-* [ ] Will pay attention to `last-modified`.
-* [ ] Will pay attention to `etag`.
-* [ ] Will store/suggest multiple versions returned with `etag`.
-* [ ] Will serve stale when allowed and unable to access the resource.
-* [ ] Will "pre-fresh" entries which are heavily used and due to expire soon, to prevent them from expiring.
+-   [x] Wraps node-fetch.
+-   [x] Throttles requests to servers that are struggling.
+-   [x] Will avoid making requests in parallel when they may be deduplicated.
+-   [x] Won't re-use a response that's expired.
+-   [ ] Will expire items from the cache.
+-   [ ] Will limit the size of object that will be cached.
+-   [ ] Will pay attention to `vary`.
+-   [ ] Will revalidate requests rather than retrying them.
+-   [ ] Will pay attention to `last-modified`.
+-   [ ] Will pay attention to `etag`.
+-   [ ] Will store/suggest multiple versions returned with `etag`.
+-   [ ] Will serve stale when allowed and unable to access the resource.
+-   [ ] Will "pre-fresh" entries which are heavily used and due to expire soon, to prevent them from expiring.
 
 ## Internals
 

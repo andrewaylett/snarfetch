@@ -76,9 +76,9 @@ const unlockable = <T>(result: T): [Promise<T>, () => void] => {
 
 describe('No Cache', () => {
     it("A first request blocks a second that's the same", async () => {
-        // If we don't yet know whether a request is cacheable, delay a subsequent
-        // request until the first returns -- either we'll issue it, or we'll
-        // re-use the first response.
+        // If we don't yet know whether a request is cacheable, delay a
+        // subsequent request until the first returns -- either we'll issue it,
+        // or we'll re-use the first response.
         const url = 'https://example.com/one';
         const unlocker = jest.fn<() => Promise<number>>();
         let returnId = 0;
@@ -113,9 +113,6 @@ describe('No Cache', () => {
     });
 
     it('A first request does not blocks a different request', async () => {
-        // If we don't yet know whether a request is cacheable, delay a subsequent
-        // request until the first returns -- either we'll issue it, or we'll
-        // re-use the first response.
         const url1 = 'https://example.com/one';
         const url2 = 'https://example.com/two';
         const unlocker = jest.fn<() => Promise<number>>();
@@ -151,9 +148,6 @@ describe('No Cache', () => {
 
 describe('Indeterminate cache', () => {
     it("A first request fulfils a second that's the same", async () => {
-        // If we don't yet know whether a request is cacheable, delay a subsequent
-        // request until the first returns -- either we'll issue it, or we'll
-        // re-use the first response.
         const url = 'https://example.com/one';
         let returnId = 0;
         const fetch: Fetch = (async () => {
@@ -174,9 +168,6 @@ describe('Indeterminate cache', () => {
     });
 
     it('Non-concurrent requests are made separately', async () => {
-        // If we don't yet know whether a request is cacheable, delay a subsequent
-        // request until the first returns -- either we'll issue it, or we'll
-        // re-use the first response.
         const url = 'https://example.com/one';
         let returnId = 0;
         const fetch: Fetch = (async () => {
@@ -197,21 +188,13 @@ describe('Indeterminate cache', () => {
     });
 
     it('first request not no-cache, second request is no-cache', async () => {
-        // If we don't yet know whether a request is cacheable, delay a subsequent
-        // request until the first returns -- either we'll issue it, or we'll
-        // re-use the first response.
         const url = 'https://example.com/one';
         let returnId = 0;
         const fetch: Fetch = (async () => {
             const id = ++returnId;
-            const headers =
-                id === 1
-                    ? {
-                          'cache-control': 'must-revalidate',
-                      }
-                    : {
-                          'cache-control': 'no-cache',
-                      };
+            const headers = {
+                'cache-control': id === 1 ? 'must-revalidate' : 'no-cache',
+            };
             return new Response(id, { headers });
         }) as unknown as Fetch;
 
