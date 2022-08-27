@@ -10,7 +10,7 @@
   },
   "type": "module",
   "source": "src/index.ts",
-  "module": "dist/index.js",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
@@ -19,7 +19,8 @@
   "scripts": {
     "build": "npm run buildonly",
     "buildonly": "tsc",
-    "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --testPathIgnorePatterns=src/postbuild.test.ts",
+    "postbuild": "NODE_OPTIONS=--experimental-vm-modules jest src/postbuild.test.ts",
     "lint": "eslint src --ext .ts",
     "prebuild": "npm run test",
     "pretest": "npm run lint",
