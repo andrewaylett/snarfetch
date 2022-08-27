@@ -15,7 +15,7 @@
  */
 
 import { jest, describe, it } from '@jest/globals';
-import { expect } from '../test/expect';
+import { expect } from './test/expect';
 
 import { Snarfetch } from './index';
 
@@ -104,6 +104,9 @@ describe('No Cache', () => {
 
         // Allow the second to proceed before allowing the first
         await unlockSecond();
+
+        await nextTick();
+
         await unlockFirst();
 
         // The second should have been blocked until the first completed
@@ -162,9 +165,10 @@ describe('Indeterminate cache', () => {
         const secondPromise = context.fetch(url);
 
         // The second should have the same result as the first
-        const one = expect(firstPromise).resolves.toSuccessfullyReturn('1');
-        const two = expect(secondPromise).resolves.toSuccessfullyReturn('1');
-        await Promise.all([one, two]);
+        await expect(firstPromise).resolves.toSuccessfullyReturn('1');
+        await expect(firstPromise).resolves.toBeCacheMiss();
+        await expect(secondPromise).resolves.toSuccessfullyReturn('1');
+        await expect(secondPromise).resolves.toBeCached();
     });
 
     it('Non-concurrent requests are made separately', async () => {
@@ -180,20 +184,22 @@ describe('Indeterminate cache', () => {
         // Issue two requests
         const firstPromise = context.fetch(url);
         await expect(firstPromise).resolves.toSuccessfullyReturn('1');
+        await expect(firstPromise).resolves.toBeCacheMiss();
 
         await nextTick();
 
         const secondPromise = context.fetch(url);
         await expect(secondPromise).resolves.toSuccessfullyReturn('2');
+        await expect(secondPromise).resolves.toBeCacheMiss();
     });
 
-    it('first request not no-cache, second request is no-cache', async () => {
+    it('first request not no-store, second request is no-cache', async () => {
         const url = 'https://example.com/one';
         let returnId = 0;
         const fetch: Fetch = (async () => {
             const id = ++returnId;
             const headers = {
-                'cache-control': id === 1 ? 'must-revalidate' : 'no-cache',
+                'cache-control': id === 1 ? 'must-revalidate' : 'no-store',
             };
             return new Response(id, { headers });
         }) as unknown as Fetch;
@@ -203,12 +209,15 @@ describe('Indeterminate cache', () => {
         // Issue two requests
         const firstPromise = context.fetch(url);
         await expect(firstPromise).resolves.toSuccessfullyReturn('1');
+        await expect(firstPromise).resolves.toBeCacheMiss();
 
         await nextTick();
 
         const secondPromise = context.fetch(url);
         const thirdPromise = context.fetch(url);
         await expect(secondPromise).resolves.toSuccessfullyReturn('2');
+        await expect(secondPromise).resolves.toBeNotCacheable();
         await expect(thirdPromise).resolves.toSuccessfullyReturn('3');
+        await expect(thirdPromise).resolves.toBeNotCacheable();
     });
 });
