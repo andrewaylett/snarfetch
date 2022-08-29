@@ -18,6 +18,8 @@ import type { Expect as RawExpect, Matchers, MatcherState } from 'expect';
 
 import { expect as originalExpect } from '@jest/globals';
 import { Response } from 'node-fetch';
+import * as fs from 'fs';
+import { ChildProcess } from 'child_process';
 
 type CustomMatchers = Parameters<typeof originalExpect.extend>[0];
 type PromiseVariant<T> = T extends Promise<infer R> ? Promise<R> : never;
@@ -188,13 +190,18 @@ const customMatchers: CustomMatchers = {
         };
     },
 
-    toBeCached(this: MatcherState, received: unknown): SyncExpectationResult {
+    toBeCached(
+        this: MatcherState,
+        received: unknown,
+        expected: unknown,
+    ): SyncExpectationResult {
         const options = {
             comment: 'Response matching',
             isNot: this.isNot,
             promise: this.promise,
         };
         const matcherName = 'toBeCached';
+        this.utils.ensureNoExpected(expected, matcherName, options);
         const headerPrefix = 'HIT';
         return checkCacheStatus.call(
             this,
@@ -208,6 +215,7 @@ const customMatchers: CustomMatchers = {
     toBeCacheMiss(
         this: MatcherState,
         received: unknown,
+        expected: unknown,
     ): SyncExpectationResult {
         const options = {
             comment: 'Response matching',
@@ -215,6 +223,7 @@ const customMatchers: CustomMatchers = {
             promise: this.promise,
         };
         const matcherName = 'toBeCacheMiss';
+        this.utils.ensureNoExpected(expected, matcherName, options);
         const headerPrefix = 'MISS';
         return checkCacheStatus.call(
             this,
@@ -228,6 +237,7 @@ const customMatchers: CustomMatchers = {
     toBeNotCacheable(
         this: MatcherState,
         received: unknown,
+        expected: unknown,
     ): SyncExpectationResult {
         const options = {
             comment: 'Response matching',
@@ -235,6 +245,7 @@ const customMatchers: CustomMatchers = {
             promise: this.promise,
         };
         const matcherName = 'toBeNotCacheable';
+        this.utils.ensureNoExpected(expected, matcherName, options);
         const headerPrefix = 'NOSTORE';
         return checkCacheStatus.call(
             this,
@@ -244,15 +255,122 @@ const customMatchers: CustomMatchers = {
             headerPrefix,
         );
     },
+
+    isAFile(
+        this: MatcherState,
+        received: unknown,
+        expected: unknown,
+    ): SyncExpectationResult {
+        const options = {
+            comment: 'Check that a file exists',
+            isNot: this.isNot,
+            promise: this.promise,
+        };
+        this.utils.ensureNoExpected(expected, 'isAFile', options);
+
+        const matcherHint = this.utils.matcherHint(
+            'toBeAFile',
+            undefined,
+            undefined,
+            options,
+        );
+
+        if (typeof received !== 'string') {
+            return {
+                pass: false,
+                message: () =>
+                    this.utils.matcherErrorMessage(
+                        matcherHint,
+                        `${this.utils.RECEIVED_COLOR(
+                            'received',
+                        )} value must be a string filename`,
+                        this.utils.printWithType(
+                            'Received',
+                            received,
+                            this.utils.printReceived,
+                        ),
+                    ),
+            };
+        }
+        return {
+            pass: fs.existsSync(received),
+            message: () =>
+                this.utils.matcherErrorMessage(
+                    matcherHint,
+                    `${this.utils.RECEIVED_COLOR(
+                        'received',
+                    )} value must exist as a file`,
+                    this.utils.printReceived(received),
+                ),
+        };
+    },
+
+    async toSpawnSuccessfully(
+        this: MatcherState,
+        received: unknown,
+        expected: unknown,
+    ): AsyncExpectationResult {
+        const options = {
+            comment: 'Check that a process succeeded',
+            isNot: this.isNot,
+            promise: this.promise,
+        };
+        this.utils.ensureNoExpected(expected, 'isAFile', options);
+
+        const matcherHint = this.utils.matcherHint(
+            'toSpawnSuccessfully',
+            undefined,
+            undefined,
+            options,
+        );
+
+        if (!(received instanceof ChildProcess)) {
+            return {
+                pass: false,
+                message: () =>
+                    this.utils.matcherErrorMessage(
+                        matcherHint,
+                        `${this.utils.RECEIVED_COLOR(
+                            'received',
+                        )} value must be a ChildProcess`,
+                        this.utils.printWithType(
+                            'Received',
+                            received,
+                            this.utils.printReceived,
+                        ),
+                    ),
+            };
+        }
+
+        return new Promise((resolve) => {
+            received.on('exit', (code, signal) => {
+                const pass = code === 0;
+                const status = pass ? 'success' : 'failure';
+                resolve({
+                    pass,
+                    message: () =>
+                        this.utils.matcherErrorMessage(
+                            matcherHint,
+                            `${this.utils.RECEIVED_COLOR(
+                                'received',
+                            )} value indicates process ${status}`,
+                            `Exit code: ${code}, signal: ${signal}`,
+                        ),
+                });
+            });
+        });
+    },
 };
 
 originalExpect.extend(customMatchers);
 
 interface ExtendedMatchers<R extends void | Promise<void>> extends Matchers<R> {
-    toSuccessfullyReturn(value: unknown): R;
+    toSuccessfullyReturn(value: unknown): Promise<R>;
     toBeCached(): R;
     toBeCacheMiss(): R;
     toBeNotCacheable(): R;
+    isAFile(): R;
+    toSpawnSuccessfully(): Promise<R>;
 }
 
 type ExtendedPromiseMatchers = {
