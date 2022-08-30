@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from '@jest/globals';
+import { describe, it } from '@jest/globals';
 import { Response } from 'node-fetch';
 import { extractCacheRules } from './cacheRules';
+import { expect } from './test/expect';
 
 describe('Validity', () => {
     it('No headers is immediately valid', () => {
@@ -24,7 +25,7 @@ describe('Validity', () => {
 
         const cacheRules = extractCacheRules(res);
 
-        expect(cacheRules.validAt(cacheRules.params.ageBase)).toBeTruthy();
+        expect(cacheRules).validAt(cacheRules.params.ageBase);
     });
 
     it('No headers will be invalid 1ms later', () => {
@@ -32,11 +33,9 @@ describe('Validity', () => {
 
         const cacheRules = extractCacheRules(res);
 
-        expect(
-            cacheRules.validAt(
-                cacheRules.params.ageBase.add({ milliseconds: 1 }),
-            ),
-        ).toBeFalsy();
+        expect(cacheRules).not.validAt(
+            cacheRules.params.ageBase.add({ milliseconds: 1 }),
+        );
     });
 
     it('No headers will be valid 1ms earlier', () => {
@@ -44,10 +43,8 @@ describe('Validity', () => {
 
         const cacheRules = extractCacheRules(res);
 
-        expect(
-            cacheRules.validAt(
-                cacheRules.params.ageBase.subtract({ milliseconds: 1 }),
-            ),
-        ).toBeTruthy();
+        expect(cacheRules).validAt(
+            cacheRules.params.ageBase.subtract({ milliseconds: 1 }),
+        );
     });
 });
