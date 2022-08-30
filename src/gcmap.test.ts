@@ -16,7 +16,7 @@
 
 import { describe, it } from '@jest/globals';
 
-import { expect } from '../test/expect';
+import { expect } from './test/expect';
 import { gc, sortByKey } from './gcmap';
 
 describe('Sort by key', () => {
@@ -52,7 +52,8 @@ describe('Sort by key', () => {
 });
 
 describe('Garbage collection', () => {
-    // Inputs are transformed into entries such that the entry key is the array position
+    // Inputs are transformed into entries such that the entry key is the array
+    // position
     // The value will be used as the weight.
     // The output is an array of weights removed
     it.each([
@@ -87,7 +88,7 @@ describe('Garbage collection', () => {
 
     it('Prefers to remove older entries', async () => {
         const input: Array<[number, number]> = [
-            [0, 2], // Will not be evicted, despite coming 'after' an over-limit entry
+            [0, 2], // Will not be evicted, even when after an over-limit entry
             [1, 4],
             [2, 0], // the earliest, also takes us over the weight limit
             [3, 1],

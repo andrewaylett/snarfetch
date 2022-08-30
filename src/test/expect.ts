@@ -20,6 +20,8 @@ import { expect as originalExpect } from '@jest/globals';
 import { Response } from 'node-fetch';
 import * as fs from 'fs';
 import { ChildProcess } from 'child_process';
+import { Instant } from '../temporal';
+import { CacheRules } from '../cacheRules';
 
 type CustomMatchers = Parameters<typeof originalExpect.extend>[0];
 type PromiseVariant<T> = T extends Promise<infer R> ? Promise<R> : never;
@@ -305,6 +307,75 @@ const customMatchers: CustomMatchers = {
         };
     },
 
+    validAt(
+        this: MatcherState,
+        cacheRule: unknown,
+        instant: unknown,
+    ): SyncExpectationResult {
+        const options = {
+            comment: 'Check that a cache is valid',
+            isNot: this.isNot,
+            promise: this.promise,
+        };
+
+        const matcherHint = this.utils.matcherHint(
+            'validAt',
+            'cache rule',
+            'instant',
+            options,
+        );
+
+        if (!(cacheRule instanceof CacheRules)) {
+            return {
+                pass: false,
+                message: () =>
+                    this.utils.matcherErrorMessage(
+                        matcherHint,
+                        `${this.utils.RECEIVED_COLOR(
+                            'received',
+                        )} value must be a CacheRules instance`,
+                        this.utils.printWithType(
+                            'Cache rule',
+                            cacheRule,
+                            this.utils.printReceived,
+                        ),
+                    ),
+            };
+        }
+        if (!(instant instanceof Instant)) {
+            return {
+                pass: false,
+                message: () =>
+                    this.utils.matcherErrorMessage(
+                        matcherHint,
+                        `${this.utils.EXPECTED_COLOR(
+                            'expected',
+                        )} value must be a Instant instance`,
+                        this.utils.printWithType(
+                            'Instant',
+                            instant,
+                            this.utils.printExpected,
+                        ),
+                    ),
+            };
+        }
+
+        const pass = cacheRule.validAt(instant);
+        return {
+            pass,
+            message: () =>
+                this.utils.matcherErrorMessage(
+                    matcherHint,
+                    `${this.utils.RECEIVED_COLOR('cache rule')} value was ${
+                        pass ? '' : 'not '
+                    }valid at ${this.utils.EXPECTED_COLOR('instant')}`,
+                    `${this.utils.printReceived(
+                        cacheRule,
+                    )}\n${this.utils.printExpected(instant)}`,
+                ),
+        };
+    },
+
     async toSpawnSuccessfully(
         this: MatcherState,
         received: unknown,
@@ -371,6 +442,7 @@ interface ExtendedMatchers<R extends void | Promise<void>> extends Matchers<R> {
     toBeNotCacheable(): R;
     isAFile(): R;
     toSpawnSuccessfully(): Promise<R>;
+    validAt(value: Instant): R;
 }
 
 type ExtendedPromiseMatchers = {
@@ -384,6 +456,7 @@ type ExtendedPromiseMatchers = {
      * chained. If the promise is rejected the assertion fails.
      */
     resolves: ExtendedMatchers<Promise<void>>;
+    not: ExtendedMatchers<void>;
 };
 
 export interface Expect extends RawExpect {
