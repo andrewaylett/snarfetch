@@ -28,6 +28,10 @@ export class Duration {
         this.milliseconds = milliseconds;
     }
 
+    get seconds(): number {
+        return this.milliseconds / 1000;
+    }
+
     static from(param: { seconds?: number; milliseconds?: number }) {
         return new Duration(
             (param.seconds ?? 0) * 1000 + (param.milliseconds ?? 0),

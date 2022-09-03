@@ -15,7 +15,7 @@
  */
 
 import { Response } from 'node-fetch';
-import { Duration, Instant, Now } from './temporal';
+import { Duration, Instant } from './temporal';
 
 // Ref https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
 
@@ -38,8 +38,8 @@ export type CacheRuleParameters = {
 
 export class CacheRules {
     readonly params: CacheRuleParameters;
-    constructor(params: Partial<CacheRuleParameters>) {
-        this.params = { ...defaultRules(), ...params };
+    constructor(params: Partial<CacheRuleParameters>, now: () => Instant) {
+        this.params = { ...defaultRules(now), ...params };
     }
 
     validAt(instant: Instant) {
@@ -54,7 +54,7 @@ export class CacheRules {
     }
 }
 
-export const defaultRules = (): CacheRuleParameters => ({
+export const defaultRules = (now: () => Instant): CacheRuleParameters => ({
     maxAge: new Duration(),
     sMaxAge: new Duration(),
     noCache: false,
@@ -68,10 +68,13 @@ export const defaultRules = (): CacheRuleParameters => ({
     immutable: false,
     staleWhileRevalidate: new Duration(),
     staleIfError: new Duration(),
-    ageBase: Now.instant(),
+    ageBase: now(),
 });
 
-export function extractCacheRules(result: Response): CacheRules {
+export function extractCacheRules(
+    result: Response,
+    now: () => Instant,
+): CacheRules {
     const cacheHeader = result.headers.get('cache-control') ?? '';
     const partialRules: Partial<CacheRuleParameters> = {};
     const rawRules = cacheHeader.split(';').map((value) => value.trim());
@@ -129,8 +132,8 @@ export function extractCacheRules(result: Response): CacheRules {
     const ageStr = result.headers.get('age');
     if (ageStr) {
         const age = Number.parseInt(ageStr, 10) ?? 0;
-        partialRules.ageBase = Now.instant().subtract({ seconds: age });
+        partialRules.ageBase = now().subtract({ seconds: age });
     }
 
-    return new CacheRules(partialRules);
+    return new CacheRules(partialRules, now);
 }

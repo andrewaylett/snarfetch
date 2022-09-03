@@ -18,12 +18,13 @@ import { describe, it } from '@jest/globals';
 import { Response } from 'node-fetch';
 import { extractCacheRules } from './cacheRules';
 import { expect } from './test/expect';
+import { Duration, Now } from './temporal';
 
 describe('Validity', () => {
     it('No headers is immediately valid', () => {
         const res = new Response();
 
-        const cacheRules = extractCacheRules(res);
+        const cacheRules = extractCacheRules(res, Now.instant);
 
         expect(cacheRules).validAt(cacheRules.params.ageBase);
     });
@@ -31,20 +32,22 @@ describe('Validity', () => {
     it('No headers will be invalid 1ms later', () => {
         const res = new Response();
 
-        const cacheRules = extractCacheRules(res);
+        const cacheRules = extractCacheRules(res, Now.instant);
 
         expect(cacheRules).not.validAt(
-            cacheRules.params.ageBase.add({ milliseconds: 1 }),
+            cacheRules.params.ageBase.add(Duration.from({ milliseconds: 1 })),
         );
     });
 
     it('No headers will be valid 1ms earlier', () => {
         const res = new Response();
 
-        const cacheRules = extractCacheRules(res);
+        const cacheRules = extractCacheRules(res, Now.instant);
 
         expect(cacheRules).validAt(
-            cacheRules.params.ageBase.subtract({ milliseconds: 1 }),
+            cacheRules.params.ageBase.subtract(
+                Duration.from({ milliseconds: 1 }),
+            ),
         );
     });
 });

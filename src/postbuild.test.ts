@@ -93,6 +93,10 @@ itNonRecursive(
             dependencies,
             devDependencies,
             peerDependencies,
+            overrides: {
+                ...dependencies,
+                ...devDependencies,
+            },
         };
         await writeFile(
             path.join(dir, 'package.json'),
