@@ -22,6 +22,7 @@ import { Snarfetch } from './index';
 import type nodeFetch from 'node-fetch';
 import { Response } from 'node-fetch';
 import { Fetch } from './options';
+import { Instant } from './temporal';
 
 const nextTick = () =>
     new Promise<void>((resolve) => {
@@ -155,7 +156,7 @@ describe('Indeterminate cache', () => {
         let returnId = 0;
         const fetch: Fetch = (async () => {
             const id = ++returnId;
-            return new Response(id);
+            return new Response(`${id}`);
         }) as unknown as Fetch;
 
         const context = new Snarfetch({ fetch });
@@ -176,7 +177,7 @@ describe('Indeterminate cache', () => {
         let returnId = 0;
         const fetch: Fetch = (async () => {
             const id = ++returnId;
-            return new Response(id);
+            return new Response(`${id}`);
         }) as unknown as Fetch;
 
         const context = new Snarfetch({ fetch });
@@ -201,7 +202,7 @@ describe('Indeterminate cache', () => {
             const headers = {
                 'cache-control': id === 1 ? 'must-revalidate' : 'no-store',
             };
-            return new Response(id, { headers });
+            return new Response(`${id}`, { headers });
         }) as unknown as Fetch;
 
         const context = new Snarfetch({ fetch });
@@ -219,5 +220,38 @@ describe('Indeterminate cache', () => {
         await expect(secondPromise).resolves.toBeNotCacheable();
         await expect(thirdPromise).resolves.toSuccessfullyReturn('3');
         await expect(thirdPromise).resolves.toBeNotCacheable();
+    });
+});
+
+describe('Expiring in turn', () => {
+    it('Sets an age header', async () => {
+        const url = 'https://example.com';
+        const now = jest.fn<() => Instant>();
+        now.mockReturnValue(new Instant(0));
+
+        const fetch: Fetch = (async () => {
+            const headers = {
+                'cache-control': 'max-age=60',
+            };
+            return new Response(undefined, { headers });
+        }) as unknown as Fetch;
+
+        const context = new Snarfetch({ fetch, now });
+        const one = context.fetch(url);
+        await expect(one).resolves.toSuccessfullyReturn('');
+        await expect(one).resolves.toBeCacheMiss();
+        await expect(one).resolves.withHeaders({
+            'cache-control': 'max-age=60',
+        });
+
+        now.mockReturnValue(new Instant(10_000));
+
+        const two = context.fetch(url);
+        await expect(two).resolves.toSuccessfullyReturn('');
+        await expect(two).resolves.toBeCached();
+        await expect(two).resolves.withHeaders({
+            'cache-control': 'max-age=60',
+            age: '10',
+        });
     });
 });

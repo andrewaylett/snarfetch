@@ -16,7 +16,7 @@
 
 import nodeFetch from 'node-fetch';
 import { SelfThrottle } from 'self-throttle';
-import { Duration } from './temporal';
+import { Duration, Instant, Now } from './temporal';
 
 export type Fetch = typeof nodeFetch;
 
@@ -48,6 +48,7 @@ export type SnarfetchOptions = {
     gcInterval?: Duration;
     maximumStorageBytes?: Bytes;
     maximumStoragePerTargetBytes?: Bytes;
+    now?: () => Instant;
 };
 
 export const SNARFETCH_DEFAULTS: Required<SnarfetchOptions> = {
@@ -56,4 +57,5 @@ export const SNARFETCH_DEFAULTS: Required<SnarfetchOptions> = {
     gcInterval: Duration.from({ seconds: 60 }),
     maximumStorageBytes: Bytes.from({ megabytes: 200 }),
     maximumStoragePerTargetBytes: Bytes.from({ megabytes: 50 }),
+    now: Now.instant,
 } as const;

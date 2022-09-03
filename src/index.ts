@@ -18,7 +18,7 @@ import type { RequestInfo, RequestInit } from 'node-fetch';
 import { lookupGlobalInstance } from './global';
 import { Fetch, SNARFETCH_DEFAULTS, SnarfetchOptions } from './options';
 import { extractTargetKey, Target, TargetKey } from './target';
-import { Instant, Now } from './temporal';
+import { Instant } from './temporal';
 import { sortByKey } from './gcmap';
 
 export const Generators = {
@@ -35,11 +35,12 @@ export const Generators = {
 export class Snarfetch {
     readonly #targets: Map<TargetKey, Target> = new Map();
     readonly #options: Required<SnarfetchOptions>;
-    #nextGc: Instant = Now.instant();
+    #nextGc: Instant;
     #gcInProgress = false;
 
     constructor(options: SnarfetchOptions = {}) {
         this.#options = { ...SNARFETCH_DEFAULTS, ...options };
+        this.#nextGc = this.#options.now();
     }
 
     fetch(url: RequestInfo, init?: RequestInit) {
@@ -62,7 +63,7 @@ export class Snarfetch {
     #maybeGc() {
         if (
             this.#gcInProgress ||
-            Instant.compare(Now.instant(), this.#nextGc) < 0
+            Instant.compare(this.#options.now(), this.#nextGc) < 0
         ) {
             return;
         }
@@ -104,7 +105,9 @@ export class Snarfetch {
                     Generators.map(sorted, ([target]) => target.gc(newLimit)),
                 );
                 this.#gcInProgress = false;
-                this.#nextGc = Now.instant().add(this.#options.gcInterval);
+                this.#nextGc = this.#options
+                    .now()
+                    .add(this.#options.gcInterval);
             }
         });
     }

@@ -16,9 +16,9 @@
 
 import { SelfThrottle } from 'self-throttle';
 import { Bytes, Fetch, SnarfetchOptions } from './options';
-import { RequestInfo, RequestInit, Response } from 'node-fetch';
+import { Headers, RequestInfo, RequestInit, Response } from 'node-fetch';
 import { CacheRules, extractCacheRules } from './cacheRules';
-import { Instant, Now } from './temporal';
+import { Instant } from './temporal';
 import { GcMap } from './gcmap';
 
 type Location = string;
@@ -31,13 +31,15 @@ abstract class LocationCacheStatus {
 
 class UnknownCacheStatus implements LocationCacheStatus {
     readonly unblock: Promise<unknown>;
+    readonly #now: () => Instant;
 
-    constructor(unblock: Promise<unknown>) {
+    constructor(unblock: Promise<unknown>, now: () => Instant) {
         this.unblock = unblock;
+        this.#now = now;
     }
 
     get lastUsed(): Instant {
-        return Now.instant();
+        return this.#now();
     }
 
     get size(): Promise<number> {
@@ -50,8 +52,14 @@ class UnknownCacheStatus implements LocationCacheStatus {
 }
 
 class NoStore implements LocationCacheStatus {
+    readonly #now: () => Instant;
+
+    constructor(now: () => Instant) {
+        this.#now = now;
+    }
+
     get lastUsed(): Instant {
-        return Now.instant();
+        return this.#now();
     }
 
     get size(): Promise<number> {
@@ -68,12 +76,18 @@ class Cached implements LocationCacheStatus {
     readonly #blob: Promise<Blob>;
     readonly #cacheRules: CacheRules;
     #lastUsed: Instant;
+    readonly #now: () => Instant;
 
-    constructor(response: Promise<Response>, cacheRules: CacheRules) {
+    constructor(
+        response: Promise<Response>,
+        cacheRules: CacheRules,
+        now: () => Instant,
+    ) {
         this.#blob = response.then((response) => response.blob());
         this.#response = response;
         this.#cacheRules = cacheRules;
-        this.#lastUsed = Now.instant();
+        this.#lastUsed = now();
+        this.#now = now;
     }
 
     get response(): Promise<Response> {
@@ -83,9 +97,16 @@ class Cached implements LocationCacheStatus {
     async #buildResponse(): Promise<Response> {
         const blob = await this.#blob;
         const response = await this.#response;
-        this.#lastUsed = Now.instant();
+        this.#lastUsed = this.#now();
+        const headers = new Headers(response.headers.entries());
+        headers.set(
+            'age',
+            Math.ceil(
+                this.#cacheRules.params.ageBase.since(this.#now()).seconds,
+            ).toString(),
+        );
         return new Response(blob, {
-            headers: response.headers.entries(),
+            headers: headers,
             status: response.status,
             statusText: response.statusText,
         });
@@ -105,7 +126,7 @@ class Cached implements LocationCacheStatus {
     }
 
     get valid(): boolean {
-        return this.validAt(Now.instant());
+        return this.validAt(this.#now());
     }
 
     validAt(instant: Instant) {
@@ -114,8 +135,14 @@ class Cached implements LocationCacheStatus {
 }
 
 class Fail implements LocationCacheStatus {
+    readonly #now: () => Instant;
+
+    constructor(now: () => Instant) {
+        this.#now = now;
+    }
+
     get lastUsed(): Instant {
-        return Now.instant();
+        return this.#now();
     }
 
     get size(): Promise<number> {
@@ -131,6 +158,7 @@ export class Target {
     readonly #throttle: SelfThrottle;
     readonly #fetch: Fetch;
     readonly #known: GcMap<Location, LocationCacheStatus> = new GcMap();
+    readonly #now: () => Instant;
     #weightLimit: Bytes;
     #pendingGcResolves: Array<(n: number) => void> = [];
 
@@ -138,11 +166,12 @@ export class Target {
         this.#throttle = new options.throttle();
         this.#fetch = this.#throttle.wrap(options.fetch);
         this.#weightLimit = options.maximumStoragePerTargetBytes;
+        this.#now = options.now;
     }
 
     async fetch(url: RequestInfo, init?: RequestInit): Promise<Response> {
         const { pathname, search } = extractTargetURL(url);
-        const requestStart = Now.instant();
+        const requestStart = this.#now();
         const cacheKey: Location = `${pathname}${search}`;
         {
             // Do we need to wait?
@@ -156,7 +185,7 @@ export class Target {
         if (cacheStatus instanceof Cached) {
             if (cacheStatus.validAt(requestStart)) {
                 const response = await cacheStatus.response;
-                const duration = requestStart.since(Now.instant());
+                const duration = requestStart.since(this.#now());
                 response.headers.set(
                     'snarfetch-status',
                     `HIT in ${duration.milliseconds} ms`,
@@ -168,7 +197,10 @@ export class Target {
         const promise = this.#fetch(url, init);
         const response = this.#postFetch(promise, cacheKey, requestStart);
         if (!cacheStatus) {
-            this.#known.set(cacheKey, new UnknownCacheStatus(response));
+            this.#known.set(
+                cacheKey,
+                new UnknownCacheStatus(response, this.#now),
+            );
         }
         return response;
     }
@@ -179,26 +211,30 @@ export class Target {
         requestStart: Instant,
     ): Promise<Response> {
         const result: Response = await promise;
-        const duration = requestStart.since(Now.instant());
+        const duration = requestStart.since(this.#now());
 
         if (result.status >= 500) {
-            this.#known.set(cacheKey, new Fail());
+            this.#known.set(cacheKey, new Fail(this.#now));
             return result;
         } else {
-            const cacheRules = extractCacheRules(result);
+            const cacheRules = extractCacheRules(result, this.#now);
             if (cacheRules.params.noStore) {
                 result.headers.set(
                     'snarfetch-status',
                     `NOSTORE in ${duration.milliseconds} ms`,
                 );
-                this.#known.set(cacheKey, new NoStore());
+                this.#known.set(cacheKey, new NoStore(this.#now));
                 return result;
             } else {
                 result.headers.set(
                     'snarfetch-status',
                     `MISS in ${duration.milliseconds} ms`,
                 );
-                const cache = new Cached(Promise.resolve(result), cacheRules);
+                const cache = new Cached(
+                    Promise.resolve(result),
+                    cacheRules,
+                    this.#now,
+                );
                 this.#known.set(cacheKey, cache);
                 setImmediate(() => this.#scheduleGC());
                 return cache.response;
