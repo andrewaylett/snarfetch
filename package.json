@@ -12,14 +12,10 @@
   "source": "src/index.ts",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
   "scripts": {
     "build": "npm run buildonly",
     "buildonly": "tsc",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --testPathIgnorePatterns=src/postbuild.test.ts",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --testPathIgnorePatterns='<rootDir>/(?:.+?)/postbuild.*|.*\\.js'",
     "postbuild": "NODE_OPTIONS=--experimental-vm-modules jest src/postbuild.test.ts",
     "lint": "eslint src --ext .ts",
     "prebuild": "npm run test",
