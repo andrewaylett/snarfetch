@@ -1,0 +1,6 @@
+*.test.*
+test
+.idea/
+.github/
+*~
+!src/*

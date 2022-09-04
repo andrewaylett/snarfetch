@@ -51,7 +51,7 @@ describe('Build output', () => {
         expect(source).isAFile();
     });
     it('main exists', () => {
-        expect(main).isAFile;
+        expect(main).isAFile();
     });
     it('types exists', () => {
         expect(types).isAFile();
