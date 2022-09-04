@@ -224,15 +224,18 @@ describe('Indeterminate cache', () => {
 });
 
 describe('Expiring in turn', () => {
-    it('Sets an age header', async () => {
+    async function makeFirstRequest(age = 0) {
         const url = 'https://example.com';
         const now = jest.fn<() => Instant>();
         now.mockReturnValue(new Instant(0));
 
         const fetch: Fetch = (async () => {
-            const headers = {
+            const headers: Record<string, string> = {
                 'cache-control': 'max-age=60',
             };
+            if (age > 0) {
+                headers['age'] = `${age}`;
+            }
             return new Response(undefined, { headers });
         }) as unknown as Fetch;
 
@@ -243,7 +246,13 @@ describe('Expiring in turn', () => {
         await expect(one).resolves.withHeaders({
             'cache-control': 'max-age=60',
         });
+        return { url, now, context };
+    }
 
+    it('Sets an age header', async () => {
+        const { url, now, context } = await makeFirstRequest();
+
+        // While the response is still valid
         now.mockReturnValue(new Instant(10_000));
 
         const two = context.fetch(url);
@@ -252,6 +261,49 @@ describe('Expiring in turn', () => {
         await expect(two).resolves.withHeaders({
             'cache-control': 'max-age=60',
             age: '10',
+        });
+    });
+
+    it('Expires after 60s', async () => {
+        const { url, now, context } = await makeFirstRequest();
+
+        // Just after the response expires
+        now.mockReturnValue(new Instant(61_000));
+
+        const two = context.fetch(url);
+        await expect(two).resolves.toSuccessfullyReturn('');
+        await expect(two).resolves.toBeCacheMiss();
+        await expect(two).resolves.withHeaders({
+            'cache-control': 'max-age=60',
+        });
+    });
+
+    it('Adds to the age header', async () => {
+        const { url, now, context } = await makeFirstRequest(10);
+
+        // While the response is still valid
+        now.mockReturnValue(new Instant(10_000));
+
+        const two = context.fetch(url);
+        await expect(two).resolves.toSuccessfullyReturn('');
+        await expect(two).resolves.toBeCached();
+        await expect(two).resolves.withHeaders({
+            'cache-control': 'max-age=60',
+            age: '20',
+        });
+    });
+
+    it('Expires an aged request early', async () => {
+        const { url, now, context } = await makeFirstRequest(10);
+
+        // Just after the response expires
+        now.mockReturnValue(new Instant(51_000));
+
+        const two = context.fetch(url);
+        await expect(two).resolves.toSuccessfullyReturn('');
+        await expect(two).resolves.toBeCacheMiss();
+        await expect(two).resolves.withHeaders({
+            'cache-control': 'max-age=60',
         });
     });
 });

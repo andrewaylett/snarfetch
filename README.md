@@ -7,19 +7,19 @@ May eventually be a helpful fetch wrapper/implementation that does things like c
 At its most basic:
 
 ```javascript
-import { fetch } from 'node-fetch';
+import { fetch } from 'snarfetch';
 await fetch('https://localhost');
 ```
 
 The API exposed is the API provided by `node-fetch` and unless it's necessary to change it, what you pass in will be passed through.
 
-The global `fetch` uses a default context and cache.
+The top-level `fetch` uses a default context and cache.
 If you want to change any of the options, or you want a separate cache, instantiate your own:
 
 ```javascript
-import { Snarfetch } from 'node-fetch';
+import { Snarfetch } from 'snarfetch';
 
-const context = new Snarfetch({});
+const context = new Snarfetch({...});
 await context.fetch('https://localhost');
 ```
 
@@ -29,7 +29,8 @@ await context.fetch('https://localhost');
 -   [x] Throttles requests to servers that are struggling.
 -   [x] Will avoid making requests in parallel when they may be deduplicated.
 -   [x] Won't re-use a response that's expired.
--   [ ] Will expire items from the cache.
+-   [x] Will expire items from the cache.
+-   [x] Will set an 'age' header on responses from the cache.
 -   [ ] Will limit the size of object that will be cached.
 -   [ ] Will pay attention to `vary`.
 -   [ ] Will revalidate requests rather than retrying them.
