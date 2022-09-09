@@ -16,7 +16,7 @@
 
 import { describe, it } from '@jest/globals';
 import { readFileSync } from 'fs';
-import { expect } from './test/expect';
+import { expect } from './expect';
 import * as fs from 'fs';
 import { promisify } from 'util';
 import * as os from 'os';
@@ -88,6 +88,11 @@ itNonRecursive(
         const dependencies = strip(PACKAGE_JSON.dependencies);
         const devDependencies = strip(PACKAGE_JSON.devDependencies);
         const peerDependencies = strip(PACKAGE_JSON.peerDependencies);
+        if (peerDependencies && devDependencies) {
+            for (const [key, value] of Object.entries(peerDependencies)) {
+                devDependencies[key] = value;
+            }
+        }
         const packageJson: PackageFile = {
             ...PACKAGE_JSON,
             dependencies,
@@ -109,7 +114,16 @@ itNonRecursive(
         await expect(
             spawn(
                 'cp',
-                ['-r', 'src', '.ed*', '.es*', 'jest*', 'tsconfig*', dir],
+                [
+                    '-r',
+                    'src',
+                    'test',
+                    '.ed*',
+                    '.es*',
+                    'jest*',
+                    'tsconfig*',
+                    dir,
+                ],
                 {
                     stdio: 'inherit',
                     shell: true,

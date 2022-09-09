@@ -1,19 +1,28 @@
 {
   // see https://www.typescriptlang.org/tsconfig to better understand tsconfigs
-  "include": ["src"],
   "extends": "@tsconfig/node16/tsconfig.json",
+  "references": [
+    {
+      "path": "src"
+    },
+    {
+      "path": "test"
+    }
+  ],
+  "files": [],
   "compilerOptions": {
+    "composite": true,
     "module": "ESNext",
     "declaration": true,
+    "declarationMap": true,
     "sourceMap": true,
-    "rootDir": "./src",
-    "outDir": "./dist",
     // linter checks for common issues
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     // noUnused* overlap with @typescript-eslint/no-unused-vars, can disable if duplicative
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "tsBuildInfoFile": "./build/base.tsbuildinfo"
   }
 }

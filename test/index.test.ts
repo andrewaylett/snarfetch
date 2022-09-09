@@ -15,14 +15,14 @@
  */
 
 import { jest, describe, it } from '@jest/globals';
-import { expect } from './test/expect';
+import { expect } from './expect';
 
-import { Snarfetch } from './index';
+import { Snarfetch } from '../src';
 
 import type nodeFetch from 'node-fetch';
 import { Response } from 'node-fetch';
-import { Fetch } from './options';
-import { Instant } from './temporal';
+import { Fetch } from '../src/options';
+import { Instant } from '../src/temporal';
 
 const nextTick = () =>
     new Promise<void>((resolve) => {
