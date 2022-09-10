@@ -15,8 +15,9 @@
  */
 
 import { SelfThrottle } from 'self-throttle';
-import { Bytes, Fetch, SnarfetchOptions } from './options';
 import { Headers, RequestInfo, RequestInit, Response } from 'node-fetch';
+
+import { Bytes, Fetch, SnarfetchOptions } from './options';
 import { CacheRules, extractCacheRules } from './cacheRules';
 import { Instant } from './temporal';
 import { GcMap } from './gcmap';

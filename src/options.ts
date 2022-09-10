@@ -16,6 +16,7 @@
 
 import nodeFetch from 'node-fetch';
 import { SelfThrottle } from 'self-throttle';
+
 import { Duration, Instant, Now } from './temporal';
 
 export type Fetch = typeof nodeFetch;

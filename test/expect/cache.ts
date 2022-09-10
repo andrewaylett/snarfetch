@@ -15,6 +15,7 @@
  */
 
 import { MatchersFor, MatcherState, ExpectationResult } from 'extend-expect';
+
 import { CacheRules } from '../../src/cacheRules';
 import { Instant } from '../../src/temporal';
 

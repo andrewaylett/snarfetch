@@ -16,9 +16,11 @@
 
 import { describe, it } from '@jest/globals';
 import { Response } from 'node-fetch';
+
 import { extractCacheRules } from '../src/cacheRules';
-import { expect } from './expect';
 import { Duration, Now } from '../src/temporal';
+
+import { expect } from './expect';
 
 describe('Validity', () => {
     it('No headers is immediately valid', () => {

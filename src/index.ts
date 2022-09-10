@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-import type { RequestInfo, RequestInit } from 'node-fetch';
 import { lookupGlobalInstance } from './global';
 import { Fetch, SNARFETCH_DEFAULTS, SnarfetchOptions } from './options';
 import { extractTargetKey, Target, TargetKey } from './target';
 import { Instant } from './temporal';
 import { sortByKey } from './gcmap';
+
+import type { RequestInfo, RequestInit } from 'node-fetch';
 
 export const Generators = {
     map: function* map<I, O>(

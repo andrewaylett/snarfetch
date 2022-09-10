@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-import { describe, it } from '@jest/globals';
 import { readFileSync } from 'fs';
-import { expect } from './expect';
 import * as fs from 'fs';
 import { promisify } from 'util';
 import * as os from 'os';
 import * as path from 'path';
-import semver from 'semver';
 import { spawn } from 'child_process';
+
+import semver from 'semver';
+import { describe, it } from '@jest/globals';
+
+import { expect } from './expect';
 
 type PackageFile = {
     source?: string;
@@ -45,14 +47,16 @@ const PACKAGE_JSON: PackageFile = JSON.parse(
 );
 
 describe('Build output', () => {
-    const { source, main, types } = PACKAGE_JSON;
+    const { main, source, types } = PACKAGE_JSON;
 
     it('source exists', () => {
         expect(source).isAFile();
     });
+
     it('main exists', () => {
         expect(main).isAFile();
     });
+
     it('types exists', () => {
         expect(types).isAFile();
     });
@@ -108,6 +112,7 @@ itNonRecursive(
             JSON.stringify(packageJson),
         );
         console.log(`Working in: ${dir}`);
+
         await expect(
             spawn('npm', ['install'], { cwd: dir, stdio: 'inherit' }),
         ).toSpawnSuccessfully();

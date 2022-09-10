@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-import { responseMatchers, ResponseMatchers } from './response';
 import { extend } from 'extend-expect';
+
+import { responseMatchers, ResponseMatchers } from './response';
 import { fileMatchers, FileMatchers } from './file';
 import { CacheMatchers, cacheMatchers } from './cache';
 import { ProcessMatchers, processMatchers } from './process';

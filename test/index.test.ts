@@ -15,14 +15,15 @@
  */
 
 import { jest, describe, it } from '@jest/globals';
-import { expect } from './expect';
+import { Response } from 'node-fetch';
 
 import { Snarfetch } from '../src';
-
-import type nodeFetch from 'node-fetch';
-import { Response } from 'node-fetch';
 import { Fetch } from '../src/options';
 import { Instant } from '../src/temporal';
+
+import { expect } from './expect';
+
+import type nodeFetch from 'node-fetch';
 
 const nextTick = () =>
     new Promise<void>((resolve) => {
@@ -184,12 +185,14 @@ describe('Indeterminate cache', () => {
 
         // Issue two requests
         const firstPromise = context.fetch(url);
+
         await expect(firstPromise).resolves.toSuccessfullyReturn('1');
         await expect(firstPromise).resolves.toBeCacheMiss();
 
         await nextTick();
 
         const secondPromise = context.fetch(url);
+
         await expect(secondPromise).resolves.toSuccessfullyReturn('2');
         await expect(secondPromise).resolves.toBeCacheMiss();
     });
@@ -209,6 +212,7 @@ describe('Indeterminate cache', () => {
 
         // Issue two requests
         const firstPromise = context.fetch(url);
+
         await expect(firstPromise).resolves.toSuccessfullyReturn('1');
         await expect(firstPromise).resolves.toBeCacheMiss();
 
@@ -216,6 +220,7 @@ describe('Indeterminate cache', () => {
 
         const secondPromise = context.fetch(url);
         const thirdPromise = context.fetch(url);
+
         await expect(secondPromise).resolves.toSuccessfullyReturn('2');
         await expect(secondPromise).resolves.toBeNotCacheable();
         await expect(thirdPromise).resolves.toSuccessfullyReturn('3');
@@ -241,21 +246,24 @@ describe('Expiring in turn', () => {
 
         const context = new Snarfetch({ fetch, now });
         const one = context.fetch(url);
+
         await expect(one).resolves.toSuccessfullyReturn('');
         await expect(one).resolves.toBeCacheMiss();
         await expect(one).resolves.withHeaders({
             'cache-control': 'max-age=60',
         });
+
         return { url, now, context };
     }
 
     it('Sets an age header', async () => {
-        const { url, now, context } = await makeFirstRequest();
+        const { context, now, url } = await makeFirstRequest();
 
         // While the response is still valid
         now.mockReturnValue(new Instant(10_000));
 
         const two = context.fetch(url);
+
         await expect(two).resolves.toSuccessfullyReturn('');
         await expect(two).resolves.toBeCached();
         await expect(two).resolves.withHeaders({
@@ -265,12 +273,13 @@ describe('Expiring in turn', () => {
     });
 
     it('Expires after 60s', async () => {
-        const { url, now, context } = await makeFirstRequest();
+        const { context, now, url } = await makeFirstRequest();
 
         // Just after the response expires
         now.mockReturnValue(new Instant(61_000));
 
         const two = context.fetch(url);
+
         await expect(two).resolves.toSuccessfullyReturn('');
         await expect(two).resolves.toBeCacheMiss();
         await expect(two).resolves.withHeaders({
@@ -279,12 +288,13 @@ describe('Expiring in turn', () => {
     });
 
     it('Adds to the age header', async () => {
-        const { url, now, context } = await makeFirstRequest(10);
+        const { context, now, url } = await makeFirstRequest(10);
 
         // While the response is still valid
         now.mockReturnValue(new Instant(10_000));
 
         const two = context.fetch(url);
+
         await expect(two).resolves.toSuccessfullyReturn('');
         await expect(two).resolves.toBeCached();
         await expect(two).resolves.withHeaders({
@@ -294,12 +304,13 @@ describe('Expiring in turn', () => {
     });
 
     it('Expires an aged request early', async () => {
-        const { url, now, context } = await makeFirstRequest(10);
+        const { context, now, url } = await makeFirstRequest(10);
 
         // Just after the response expires
         now.mockReturnValue(new Instant(51_000));
 
         const two = context.fetch(url);
+
         await expect(two).resolves.toSuccessfullyReturn('');
         await expect(two).resolves.toBeCacheMiss();
         await expect(two).resolves.withHeaders({

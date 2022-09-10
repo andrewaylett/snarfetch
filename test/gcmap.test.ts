@@ -16,8 +16,9 @@
 
 import { describe, it } from '@jest/globals';
 
-import { expect } from './expect';
 import { gc, sortByKey } from '../src/gcmap';
+
+import { expect } from './expect';
 
 describe('Sort by key', () => {
     it('retains an identity sort', () => {
@@ -42,11 +43,15 @@ describe('Sort by key', () => {
             [-1, 3],
         ];
         const output = [...sortByKey(input, (v) => v[1])];
+
         expect(output).toEqual(input);
 
         const mangled = output.sort();
+
         expect(mangled).not.toEqual(input);
+
         const resort = sortByKey(mangled, (v) => v[1]);
+
         expect([...resort]).toEqual(input);
     });
 });

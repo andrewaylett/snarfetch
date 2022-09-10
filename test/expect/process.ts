@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-import { ExpectationResult, MatcherState, MatchersFor } from 'extend-expect';
 import { ChildProcess } from 'child_process';
+
+import { ExpectationResult, MatcherState, MatchersFor } from 'extend-expect';
 
 async function toSpawnSuccessfully(
     this: MatcherState,
