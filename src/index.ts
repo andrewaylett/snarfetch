@@ -14,23 +14,25 @@
  * limitations under the License.
  */
 
-import { lookupGlobalInstance } from './global';
-import { Fetch, SNARFETCH_DEFAULTS, SnarfetchOptions } from './options';
-import { extractTargetKey, Target, TargetKey } from './target';
-import { Instant } from './temporal';
-import { sortByKey } from './gcmap';
+import { lookupGlobalInstance } from './global.js';
+import { Fetch, SNARFETCH_DEFAULTS, SnarfetchOptions } from './options.js';
+import { extractTargetKey, Target, TargetKey } from './target.js';
+import { Instant } from './temporal.js';
+import { sortByKey } from './gcmap.js';
 
 import type { RequestInfo, RequestInit } from 'node-fetch';
 
+function* mapGenerator<I, O>(
+    input: Iterable<I>,
+    transform: (input: I) => O,
+): IterableIterator<O> {
+    for (const item of input) {
+        yield transform(item);
+    }
+}
+
 export const Generators = {
-    map: function* map<I, O>(
-        input: Iterable<I>,
-        fn: (i: I) => O,
-    ): IterableIterator<O> {
-        for (const i of input) {
-            yield fn(i);
-        }
-    },
+    mapGenerator,
 };
 
 export class Snarfetch {
@@ -70,7 +72,7 @@ export class Snarfetch {
         }
         this.#gcInProgress = true;
         setImmediate(async () => {
-            const targetAndPromise = Generators.map(
+            const targetAndPromise = Generators.mapGenerator(
                 this.#targets.values(),
                 (target): [Target, Promise<number>] => [
                     target,
@@ -79,7 +81,7 @@ export class Snarfetch {
             );
 
             const targets = await Promise.all(
-                Generators.map(
+                Generators.mapGenerator(
                     targetAndPromise,
                     ([target, promise]): Promise<[Target, number]> =>
                         promise.then((n) => [target, n]),
@@ -103,7 +105,9 @@ export class Snarfetch {
                 }
                 const newLimit = maximum / sorted.length;
                 await Promise.all(
-                    Generators.map(sorted, ([target]) => target.gc(newLimit)),
+                    Generators.mapGenerator(sorted, ([target]) =>
+                        target.gc(newLimit),
+                    ),
                 );
                 this.#gcInProgress = false;
                 this.#nextGc = this.#options

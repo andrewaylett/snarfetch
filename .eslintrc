@@ -1,4 +1,8 @@
 {
     "root": true,
-    "extends": ["andrewaylett"]
+    "extends": ["andrewaylett", "plugin:unicorn/recommended"],
+    "rules": {
+        "unicorn/prevent-abbreviations": 0,
+        "unicorn/consistent-function-scoping": 0
+    }
 }

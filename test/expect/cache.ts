@@ -16,8 +16,8 @@
 
 import { MatchersFor, MatcherState, ExpectationResult } from 'extend-expect';
 
-import { CacheRules } from '../../src/cacheRules';
-import { Instant } from '../../src/temporal';
+import { CacheRules } from '#cache-rules';
+import { Instant } from '#temporal';
 
 function validAt(
     this: MatcherState,

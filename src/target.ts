@@ -17,10 +17,10 @@
 import { SelfThrottle } from 'self-throttle';
 import { Headers, RequestInfo, RequestInit, Response } from 'node-fetch';
 
-import { Bytes, Fetch, SnarfetchOptions } from './options';
-import { CacheRules, extractCacheRules } from './cacheRules';
-import { Instant } from './temporal';
-import { GcMap } from './gcmap';
+import { Bytes, Fetch, SnarfetchOptions } from './options.js';
+import { CacheRules, extractCacheRules } from './cache-rules.js';
+import { Instant } from './temporal.js';
+import { GcMap } from './gcmap.js';
 
 type Location = string;
 

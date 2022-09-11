@@ -16,14 +16,14 @@
 
 import { jest, describe, it } from '@jest/globals';
 import { Response } from 'node-fetch';
+import { Snarfetch } from 'snarfetch';
 
-import { Snarfetch } from '../src';
-import { Fetch } from '../src/options';
-import { Instant } from '../src/temporal';
-
-import { expect } from './expect';
+import { expect } from './expect/index.js';
 
 import type nodeFetch from 'node-fetch';
+
+import { Fetch } from '#options';
+import { Instant } from '#temporal';
 
 const nextTick = () =>
     new Promise<void>((resolve) => {
@@ -55,6 +55,7 @@ describe('Basic passthrough', () => {
             const rv = context.fetch(url);
 
             await expect(rv).resolves.toSuccessfullyReturn(body);
+            // eslint-disable-next-line unicorn/no-useless-undefined
             expect(mockFetch).toBeCalledWith(url, undefined);
         });
     });
@@ -228,34 +229,34 @@ describe('Indeterminate cache', () => {
     });
 });
 
-describe('Expiring in turn', () => {
-    async function makeFirstRequest(age = 0) {
-        const url = 'https://example.com';
-        const now = jest.fn<() => Instant>();
-        now.mockReturnValue(new Instant(0));
+async function makeFirstRequest(age = 0) {
+    const url = 'https://example.com';
+    const now = jest.fn<() => Instant>();
+    now.mockReturnValue(new Instant(0));
 
-        const fetch: Fetch = (async () => {
-            const headers: Record<string, string> = {
-                'cache-control': 'max-age=60',
-            };
-            if (age > 0) {
-                headers['age'] = `${age}`;
-            }
-            return new Response(undefined, { headers });
-        }) as unknown as Fetch;
-
-        const context = new Snarfetch({ fetch, now });
-        const one = context.fetch(url);
-
-        await expect(one).resolves.toSuccessfullyReturn('');
-        await expect(one).resolves.toBeCacheMiss();
-        await expect(one).resolves.withHeaders({
+    const fetch: Fetch = (async () => {
+        const headers: Record<string, string> = {
             'cache-control': 'max-age=60',
-        });
+        };
+        if (age > 0) {
+            headers['age'] = `${age}`;
+        }
+        return new Response(undefined, { headers });
+    }) as unknown as Fetch;
 
-        return { url, now, context };
-    }
+    const context = new Snarfetch({ fetch, now });
+    const one = context.fetch(url);
 
+    await expect(one).resolves.toSuccessfullyReturn('');
+    await expect(one).resolves.toBeCacheMiss();
+    await expect(one).resolves.withHeaders({
+        'cache-control': 'max-age=60',
+    });
+
+    return { url, now, context };
+}
+
+describe('Expiring in turn', () => {
     it('Sets an age header', async () => {
         const { context, now, url } = await makeFirstRequest();
 

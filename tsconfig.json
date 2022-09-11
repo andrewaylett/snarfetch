@@ -12,17 +12,12 @@
   "files": [],
   "compilerOptions": {
     "composite": true,
-    "module": "ESNext",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "target": "ES2022",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    // linter checks for common issues
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    // noUnused* overlap with @typescript-eslint/no-unused-vars, can disable if duplicative
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "resolveJsonModule": true,
     "tsBuildInfoFile": "./build/base.tsbuildinfo"
   }
 }

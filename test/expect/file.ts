@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import fs from 'fs';
+import fs from 'node:fs';
 
 import { MatchersFor, MatcherState, ExpectationResult } from 'extend-expect';
 
@@ -36,6 +36,24 @@ function isAFile(
         undefined,
         options,
     );
+
+    if (received === undefined) {
+        return {
+            pass: true,
+            message: () =>
+                this.utils.matcherErrorMessage(
+                    matcherHint,
+                    `${this.utils.RECEIVED_COLOR(
+                        'received',
+                    )} value is undefined, assume missing`,
+                    this.utils.printWithType(
+                        'Received',
+                        received,
+                        this.utils.printReceived,
+                    ),
+                ),
+        };
+    }
 
     if (typeof received !== 'string') {
         return {

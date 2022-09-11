@@ -16,7 +16,7 @@
 
 import { Response } from 'node-fetch';
 
-import { Duration, Instant } from './temporal';
+import { Duration, Instant } from './temporal.js';
 
 // Ref https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
 

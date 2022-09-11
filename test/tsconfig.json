@@ -7,7 +7,7 @@
     }
   ],
   "compilerOptions": {
-    "noEmit": true,
+    "outDir": "../build/test/",
     "tsBuildInfoFile": "../build/test.tsbuildinfo"
   }
 }

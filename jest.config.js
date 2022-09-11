@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-import { Snarfetch } from './index.js';
-
-let global: Snarfetch | undefined;
-
-export const lookupGlobalInstance = () => {
-    if (!global) {
-        global = new Snarfetch();
-    }
-    return global;
+/** @type {import('jest').Config} */
+const options = {
+    testEnvironment: 'node',
+    injectGlobals: false,
+    moduleNameMapper: {
+        '^#(.*)$': '<rootDir>/dist/$1.js',
+    },
 };
+
+// noinspection JSUnusedGlobalSymbols
+export default options;

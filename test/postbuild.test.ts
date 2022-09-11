@@ -14,22 +14,37 @@
  * limitations under the License.
  */
 
-import { readFileSync } from 'fs';
-import * as fs from 'fs';
-import { promisify } from 'util';
-import * as os from 'os';
-import * as path from 'path';
-import { spawn } from 'child_process';
+import { readFileSync } from 'node:fs';
+import * as fs from 'node:fs';
+import { promisify } from 'node:util';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { spawn } from 'node:child_process';
 
 import semver from 'semver';
 import { describe, it } from '@jest/globals';
+import glob from 'glob';
 
-import { expect } from './expect';
+import { expect } from './expect/index.js';
 
 type PackageFile = {
     source?: string;
     main?: string;
     types?: string;
+    exports?: {
+        [s: string]:
+            | string
+            | {
+                  [s: string]: string;
+              };
+    };
+    imports?: {
+        [s: string]:
+            | string
+            | {
+                  [s: string]: string;
+              };
+    };
     dependencies?: {
         [s: string]: string;
     };
@@ -47,7 +62,7 @@ const PACKAGE_JSON: PackageFile = JSON.parse(
 );
 
 describe('Build output', () => {
-    const { main, source, types } = PACKAGE_JSON;
+    const { exports, imports, main, source, types } = PACKAGE_JSON;
 
     it('source exists', () => {
         expect(source).isAFile();
@@ -60,6 +75,63 @@ describe('Build output', () => {
     it('types exists', () => {
         expect(types).isAFile();
     });
+
+    function testExportsMap(
+        pattern: string,
+        v: string | { [s: string]: string },
+    ) {
+        const exports = typeof v == 'string' ? { default: v } : v;
+
+        if (pattern.includes('*')) {
+            // Check that we have a default and all the files for each pattern.
+            it(`${pattern} has a default value`, () => {
+                expect(Object.keys(v)).toContain('default');
+            });
+
+            it(`${pattern} only has one wildcard`, () => {
+                expect(pattern).toMatch(/^[^*]*\*[^*]*$/);
+            });
+
+            const check: Record<string, string[]> = {};
+            for (const [type, pattern] of Object.entries(exports)) {
+                const [prefix, suffix] = pattern.split('*', 2);
+                const matches = glob.sync(pattern.replace('/*', '/**/*'));
+                for (const file of matches) {
+                    const match = file.slice(prefix.length, -suffix.length);
+                    check[match] = check[match] ?? [];
+                    check[match].push(type);
+                }
+            }
+            const types = Object.keys(exports);
+
+            it.each(Object.entries(check))(
+                `%p has all of ${types} available (%p)`,
+                (_, foundTypes) => {
+                    expect(foundTypes).toEqual(expect.arrayContaining(types));
+                },
+            );
+        } else {
+            // Simple file match
+            it.each(Object.entries(v))(
+                `Export %p for ${pattern}: %p`,
+                (_, v) => {
+                    expect(v).isAFile();
+                },
+            );
+        }
+    }
+
+    describe.each(Object.entries(exports || {}))(
+        // eslint-disable-next-line jest/valid-describe-callback
+        'Exports for %p',
+        testExportsMap,
+    );
+
+    describe.each(Object.entries(imports || {}))(
+        // eslint-disable-next-line jest/valid-describe-callback
+        'Imports for %p',
+        testExportsMap,
+    );
 });
 
 const mkdtemp: typeof fs.mkdtemp.__promisify__ = promisify(fs.mkdtemp);

@@ -72,43 +72,41 @@ function checkCacheStatus(
         };
     }
 
-    if (status.startsWith(headerPrefix)) {
-        return {
-            message: () =>
-                this.utils.matcherErrorMessage(
-                    matcherHint,
-                    `${this.utils.RECEIVED_COLOR(
-                        'received',
-                    )} value starts with the correct string`,
-                    this.utils.printWithType(
-                        'snarfetch-status header',
-                        status,
-                        this.utils.printReceived,
-                    ),
-                ),
-            pass: true,
-        };
-    } else {
-        return {
-            pass: false,
-            message: () =>
-                this.utils.matcherErrorMessage(
-                    matcherHint,
-                    `${this.utils.RECEIVED_COLOR(
-                        'received',
-                    )} value must equal ${this.utils.EXPECTED_COLOR(
-                        'expected',
-                    )} value`,
-                    this.utils.printDiffOrStringify(
-                        headerPrefix,
-                        status,
-                        'Expected snarfetch-status header to start with',
-                        'Received snarfetch-status header was',
-                        this.expand ?? false,
-                    ),
-                ),
-        };
-    }
+    return status.startsWith(headerPrefix)
+        ? {
+              message: () =>
+                  this.utils.matcherErrorMessage(
+                      matcherHint,
+                      `${this.utils.RECEIVED_COLOR(
+                          'received',
+                      )} value starts with the correct string`,
+                      this.utils.printWithType(
+                          'snarfetch-status header',
+                          status,
+                          this.utils.printReceived,
+                      ),
+                  ),
+              pass: true,
+          }
+        : {
+              pass: false,
+              message: () =>
+                  this.utils.matcherErrorMessage(
+                      matcherHint,
+                      `${this.utils.RECEIVED_COLOR(
+                          'received',
+                      )} value must equal ${this.utils.EXPECTED_COLOR(
+                          'expected',
+                      )} value`,
+                      this.utils.printDiffOrStringify(
+                          headerPrefix,
+                          status,
+                          'Expected snarfetch-status header to start with',
+                          'Received snarfetch-status header was',
+                          this.expand ?? false,
+                      ),
+                  ),
+          };
 }
 
 export function toBeCached(
@@ -178,10 +176,10 @@ export async function toSuccessfullyReturn(
     }
 
     const actual = await received.json();
-    const expectedStr = this.utils.stringify(expected);
-    const actualStr = this.utils.stringify(actual);
+    const expectedString = this.utils.stringify(expected);
+    const actualString = this.utils.stringify(actual);
     return {
-        pass: expectedStr === actualStr,
+        pass: expectedString === actualString,
         message: () =>
             this.utils.matcherErrorMessage(
                 matcherHint,

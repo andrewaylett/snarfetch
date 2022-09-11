@@ -16,9 +16,9 @@
 
 import { describe, it } from '@jest/globals';
 
-import { gc, sortByKey } from '../src/gcmap';
+import { expect } from './expect/index.js';
 
-import { expect } from './expect';
+import { gc, sortByKey } from '#gcmap';
 
 describe('Sort by key', () => {
     it('retains an identity sort', () => {

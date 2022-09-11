@@ -16,11 +16,11 @@
 
 // The bits of the new Temporal API that I actually need
 
-export class Now {
-    static instant(): Instant {
+export const Now = {
+    instant(): Instant {
         return new Instant(Date.now());
-    }
-}
+    },
+};
 
 export class Duration {
     readonly milliseconds: number;

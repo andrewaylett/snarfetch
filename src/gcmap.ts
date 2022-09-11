@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { Generators } from './index';
+import { Generators } from './index.js';
 
 function* addKey<V, S>(
     entries: Iterable<V>,
@@ -100,7 +100,7 @@ export class GcMap<K, V> extends Map<K, V> {
 
     async weight(weigher: (v: V) => Promise<number>): Promise<number> {
         const weights = await Promise.all(
-            Generators.map(this.values(), weigher),
+            Generators.mapGenerator(this.values(), weigher),
         );
         return weights.reduce((a, b) => a + b);
     }

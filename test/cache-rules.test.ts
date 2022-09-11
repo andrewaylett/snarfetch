@@ -17,10 +17,10 @@
 import { describe, it } from '@jest/globals';
 import { Response } from 'node-fetch';
 
-import { extractCacheRules } from '../src/cacheRules';
-import { Duration, Now } from '../src/temporal';
+import { expect } from './expect/index.js';
 
-import { expect } from './expect';
+import { extractCacheRules } from '#cache-rules';
+import { Duration, Now } from '#temporal';
 
 describe('Validity', () => {
     it('No headers is immediately valid', () => {
