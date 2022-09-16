@@ -46,7 +46,7 @@
     "@tsconfig/node16": "1.0.3",
     "@types/eslint": "8.4.6",
     "@types/glob": "8.0.0",
-    "@types/jest": "29.0.2",
+    "@types/jest": "29.0.3",
     "@types/node": "16.11.59",
     "@types/semver": "7.3.12",
     "@typescript-eslint/eslint-plugin": "5.37.0",
