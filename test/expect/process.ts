@@ -28,7 +28,7 @@ async function toSpawnSuccessfully(
         isNot: this.isNot,
         promise: this.promise,
     };
-    this.utils.ensureNoExpected(expected, 'isAFile', options);
+    this.utils.ensureNoExpected(expected, 'toSpawnSuccessfully', options);
 
     const matcherHint = this.utils.matcherHint(
         'toSpawnSuccessfully',

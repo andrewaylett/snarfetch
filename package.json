@@ -29,13 +29,17 @@
     "build": "npm run buildonly",
     "buildonly": "tsc -b --verbose .",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --testPathIgnorePatterns='<rootDir>/(?:.+?)/postbuild.*|.*\\.ts'",
-    "postbuild": "NODE_OPTIONS=--experimental-vm-modules jest build/test/postbuild.test.js",
+    "postbuild": "prepackage-checks && NODE_OPTIONS=--experimental-vm-modules jest build/test/postbuild.test.js",
     "lint": "eslint .",
     "prebuild": "npm run test",
     "pretest": "npm run lint && npm run buildonly",
     "lint:fix": "npm run lint -- --fix",
     "dev": "npm run lint:fix && npm run buildonly && npm run test",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "trypostbuild": "build/test/postbuild.test.js"
+  },
+  "bin": {
+    "post": "./build/test/postbuild.test.js"
   },
   "prettier": {
     "semi": true,
@@ -57,6 +61,7 @@
     "glob": "8.0.3",
     "jest": "29.0.3",
     "node-fetch": "3.2.10",
+    "prepackage-checks": "0.1.2",
     "prettier": "2.7.1",
     "self-throttle": "0.3.1",
     "semver": "7.3.7",
