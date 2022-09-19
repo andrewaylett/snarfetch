@@ -18,17 +18,12 @@ import { extend } from 'extend-expect';
 
 import { responseMatchers, ResponseMatchers } from './response.js';
 import { CacheMatchers, cacheMatchers } from './cache.js';
-import { ProcessMatchers, processMatchers } from './process.js';
 
 const customMatchers = {
     ...responseMatchers,
     ...cacheMatchers,
-    ...processMatchers,
 };
 
-interface CoreExtensions
-    extends ResponseMatchers,
-        CacheMatchers,
-        ProcessMatchers {}
+interface CoreExtensions extends ResponseMatchers, CacheMatchers {}
 
 export const expect = extend<CoreExtensions>(customMatchers);
