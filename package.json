@@ -52,7 +52,7 @@
     "@typescript-eslint/eslint-plugin": "5.38.1",
     "downgrade-build": "0.1.0",
     "eslint": "8.24.0",
-    "eslint-config-andrewaylett": "2.0.0",
+    "eslint-config-andrewaylett": "2.1.1",
     "eslint-plugin-unicorn": "43.0.2",
     "extend-expect": "1.0.2",
     "ignore": "5.2.0",
