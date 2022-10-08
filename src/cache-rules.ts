@@ -86,45 +86,58 @@ export function extractCacheRules(
         const value = Number.parseInt(valueStr, 10) ?? undefined;
         const duration = Duration.from({ seconds: value });
         switch (rule) {
-            case 'max-age':
+            case 'max-age': {
                 partialRules.maxAge = duration;
                 break;
-            case 's-max-age':
+            }
+            case 's-max-age': {
                 partialRules.sMaxAge = duration;
                 break;
-            case 'no-cache':
+            }
+            case 'no-cache': {
                 partialRules.noCache = true;
                 break;
-            case 'must-revalidate':
+            }
+            case 'must-revalidate': {
                 partialRules.mustRevalidate = true;
                 break;
-            case 'proxy-revalidate':
+            }
+            case 'proxy-revalidate': {
                 partialRules.proxyRevalidate = true;
                 break;
-            case 'no-store':
+            }
+            case 'no-store': {
                 partialRules.noStore = true;
                 break;
-            case 'private':
+            }
+            case 'private': {
                 partialRules.private = true;
                 break;
-            case 'public':
+            }
+            case 'public': {
                 partialRules.public = true;
                 break;
-            case 'must-understand':
+            }
+            case 'must-understand': {
                 partialRules.mustUnderstand = true;
                 break;
-            case 'no-transform':
+            }
+            case 'no-transform': {
                 partialRules.noTransform = true;
                 break;
-            case 'immutable':
+            }
+            case 'immutable': {
                 partialRules.immutable = true;
                 break;
-            case 'stale-while-revalidate':
+            }
+            case 'stale-while-revalidate': {
                 partialRules.staleWhileRevalidate = duration;
                 break;
-            case 'stale-if-error':
+            }
+            case 'stale-if-error': {
                 partialRules.staleIfError = duration;
                 break;
+            }
             default:
             // Ignore unknown keys
         }
