@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@tsconfig/node16": "1.0.3",
-    "@types/eslint": "8.4.7",
+    "@types/eslint": "8.4.8",
     "@types/glob": "8.0.0",
     "@types/jest": "29.2.0",
     "@types/node": "18.11.5",
