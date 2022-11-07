@@ -49,7 +49,7 @@
     "@types/jest": "29.2.2",
     "@types/node": "18.11.9",
     "@types/semver": "7.3.13",
-    "@typescript-eslint/eslint-plugin": "5.42.0",
+    "@typescript-eslint/eslint-plugin": "5.42.1",
     "downgrade-build": "0.1.0",
     "eslint": "8.27.0",
     "eslint-config-andrewaylett": "2.1.1",
