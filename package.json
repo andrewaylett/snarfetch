@@ -53,7 +53,7 @@
     "downgrade-build": "0.2.0",
     "eslint": "8.35.0",
     "eslint-config-andrewaylett": "2.2.0",
-    "eslint-plugin-unicorn": "45.0.2",
+    "eslint-plugin-unicorn": "46.0.0",
     "extend-expect": "1.0.2",
     "ignore": "5.2.4",
     "jest": "29.4.3",
